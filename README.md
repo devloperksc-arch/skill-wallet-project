@@ -1,135 +1,258 @@
-# StaffSync — MERN HRM System
+# StaffSync — Production MERN HRM System
 
-A web-based Human Resource Management system built on the MERN stack (MongoDB, Express 5, React 19, Node 24 LTS).
+StaffSync is an enterprise-grade Human Resource Management system built on the modern MERN stack (**MongoDB Community 8 / Atlas, Express 5, React 19, Node.js 24 LTS**) with Vanilla CSS / Bootstrap 5.3 and Vite 7.
 
-## Roles
-- **HR** — manages employees, departments, leave settings, attendance, announcements
-- **Manager** — approves team leaves, manages training programs
-- **Employee** — marks attendance, applies for leave, views assigned trainings
+---
 
-## Quick Start
+## 🌟 Key Capabilities by Role
 
-### Prerequisites
-- Node.js 24 LTS (≥ 22.22)
-- MongoDB running locally (`mongod`) or an Atlas URI
-- npm (ships with Node 24)
+### 👔 HR Administration
+- **Workforce Management**: Full Employee directory, department structuring, temporary password generation, employee onboarding, status toggling (active/deactivated) with immediate session revocation.
+- **Leave Policy & Quotas**: Configure leave types, official company holidays, allocate annual quotas, adjust employee balances with mandatory audit notes, and act as the final approval authority for managerial leave requests.
+- **Attendance Oversight**: Monitor real-time organization attendance, view per-employee monthly summaries, correct check-in/out records with an audit trail, and export Excel-safe CSV records (formula-injection protected).
+- **Internal Communications**: Author, schedule, and pin company-wide announcements targeted to specific audience groups (`all`, `employee`, `manager`, `hr`) with XSS sanitization.
+- **Executive Analytics**: Single-query dashboard with active headcount, department distribution bar chart, monthly leave status donut chart, 30-day attendance trend line, and training completion rates.
 
-### Setup
+### 👥 People Managers
+- **Team Oversight**: Scoped directory of direct reports with individual attendance and leave profiles.
+- **Leave Approvals**: Review pending team leave requests with working-day preview (holidays/weekends deducted), approve or reject with comments, guarded against race conditions.
+- **Attendance Tracking**: Real-time daily team attendance board with instant filters (Present, Late, On Leave, Not Checked In).
+- **Training & Development**: Create training programs (online/in-person), track capacity meters, enroll direct reports, record scores, document manager notes, and mark completions.
 
+### 💼 Employees
+- **Self-Service Portal**: View and update allowed personal contact details, view reporting hierarchy.
+- **Attendance Tracker**: Real-time clock widget synchronized with server time, one-click check-in/out, late arrival badges, and monthly personal attendance logs.
+- **Leave Management**: Apply for leaves with automatic working-day calculator (excludes weekends/holidays), track annual quotas (allocated, used, pending, available), view team leave calendar, and cancel future approved requests.
+- **Training & Skills**: View enrolled training programs, update progress percentage, log feedback, and view completion milestones.
+- **Company Feed**: Read latest announcements with priority markers and pinned updates.
+
+---
+
+## 🏗️ Architecture & Technology Stack
+
+```
+staffsync/
+├── Dockerfile                      # Production multi-stage Alpine build (non-root runner)
+├── docker-compose.yml              # One-command execution with MongoDB 8
+├── package.json                    # Workspace orchestration scripts (concurrently)
+├── docs/
+│   ├── DECISIONS.md                # Architectural decisions & invariants log
+│   └── StaffSync.postman_collection.json # 35+ fully tested endpoints
+├── server/                         # Express 5 (ESM) + Mongoose 9 Backend
+│   ├── .env.example                # Documented configuration variables
+│   ├── src/
+│   │   ├── server.js               # Database connection and HTTP server listener
+│   │   ├── app.js                  # Express 5 configuration & SPA static catch-all
+│   │   ├── config/                 # Zod-validated environment config, DB connection
+│   │   ├── models/                 # Mongoose schemas (User, Dept, Leave, Attendance, Training, Announcement)
+│   │   ├── routes/                 # Express routers mounted under /api/*
+│   │   ├── controllers/            # Controller layer
+│   │   ├── services/               # Core business logic (dates, balances, rules, reports)
+│   │   ├── middleware/             # auth, authorize, validate (zod), error, notFound
+│   │   ├── validators/             # Strict Zod validation schemas
+│   │   ├── utils/                  # ApiError, dates (company timezone), pagination
+│   │   └── seed/                   # Idempotent database seeder
+│   └── tests/                      # 86 automated tests (vitest, supertest, mongodb-memory-server)
+└── client/                         # React 19 + React Router v8 + Bootstrap 5.3 + Vite 7
+    ├── src/
+    │   ├── api/                    # Axios API client modules with token auto-refresh
+    │   ├── context/                # AuthContext (in-memory JWT) & ToastContext
+    │   ├── layouts/                # AppLayout (Sidebar, Topbar, Alerts) & AuthLayout
+    │   ├── components/             # Reusable UI widgets, Modals, Inline Accessible SVG Charts
+    │   ├── pages/                  # Route-level code-split feature pages (dashboards, HR, leaves, attendance, training)
+    │   └── styles/                 # Custom theme tokens and overrides
+```
+
+---
+
+## ⚙️ Environment Configuration (`server/.env`)
+
+| Variable | Description | Default / Example |
+|---|---|---|
+| `NODE_ENV` | Runtime environment (`development`, `production`, `test`) | `development` |
+| `PORT` | Backend HTTP port | `5000` |
+| `MONGODB_URI` | MongoDB connection string | `mongodb://127.0.0.1:27017/staffsync` |
+| `JWT_ACCESS_SECRET` | Secret key for signing 15-minute access tokens (min 32 chars) | `change-me-to-a-very-secure-secret-key-32-chars!` |
+| `JWT_REFRESH_SECRET` | Secret key for signing 7-day refresh tokens (min 32 chars) | `change-me-to-another-secure-secret-key-32-chars!` |
+| `ACCESS_TOKEN_TTL` | Lifespan of access token | `15m` |
+| `REFRESH_TOKEN_TTL` | Lifespan of refresh token | `7d` |
+| `CLIENT_ORIGIN` | Allowed CORS origin (development only) | `http://localhost:5173` |
+| `COMPANY_TZ` | Authoritative organization timezone | `Asia/Kolkata` |
+| `WORK_START` | Official start of workday | `09:30` |
+| `LATE_GRACE_MINUTES` | Grace window before marking attendance as late | `15` |
+| `FULL_DAY_MINUTES` | Minimum worked minutes required for full-day present | `480` |
+| `HALF_DAY_MINUTES` | Minimum worked minutes required for half-day status | `240` |
+| `WEEKEND_DAYS` | Comma-separated weekend day indexes (0=Sun, 6=Sat) | `0,6` |
+| `LEAVE_BACKDATE_DAYS`| Allowed backdating window for leave applications | `7` |
+| `SEED_PASSWORD` | Password assigned to seeded demo accounts | `Passw0rd!23` |
+
+---
+
+## 🚀 Quick Start (Local Development)
+
+### 1. Prerequisites
+- **Node.js**: `24 LTS` (minimum `22.22+`)
+- **MongoDB**: `8.x` running locally (`mongod`) or MongoDB Atlas connection string
+- **npm**: Ships with Node.js
+
+### 2. Installation & Setup
 ```bash
-# 1. Install root dependencies
+# Clone the repository
+git clone https://github.com/devloperksc-arch/skill-wallet-project.git
+cd skill-wallet-project
+
+# Install root, backend, and frontend dependencies
 npm install
-
-# 2. Install server dependencies
 cd server && npm install && cd ..
-
-# 3. Scaffold Vite client (done once)
 cd client && npm install && cd ..
 
-# 4. Configure environment
+# Setup environment variables
 cp server/.env.example server/.env
-# Edit server/.env with your MongoDB URI and secrets
 
-# 5. Seed the database
+# Seed initial departments, users, leaves, holidays, and announcements
 npm run seed
 
-# 6. Start dev servers
+# Run both backend and frontend concurrently
 npm run dev
 ```
 
-- API: http://localhost:5000
-- Client: http://localhost:5173
+- **Frontend Client**: `http://localhost:5173` (proxies `/api` requests to backend)
+- **Backend API**: `http://localhost:5000`
 
-## Test Accounts (dev only — password: `Passw0rd!23`)
+---
 
-| Email | Role |
-|-------|------|
-| hr@staffsync.test | HR |
-| hr2@staffsync.test | HR |
-| manager@staffsync.test | Manager |
-| employee1@staffsync.test | Employee |
-| employee2@staffsync.test | Employee |
-| employee3@staffsync.test | Employee |
+## 🐳 Docker Deployment (One-Command Run)
 
-## Scripts
+Run the full production stack (Node.js 24 Alpine runner + MongoDB 8 + persistent storage) with Docker Compose:
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start both server and client in dev mode |
-| `npm run seed` | Seed the database (idempotent) |
-| `npm test` | Run all server tests |
-| `npm run build` | Build the client for production |
-| `npm start` | Start the production server |
+```bash
+# Build and run containers in background
+docker compose up -d --build
 
-## What Works (Chapters 1, 2 & 3)
-- ✅ **Chapter 1 — Foundation, Authentication & Role-Based Shell**
-  - JWT authentication (in-memory access token + httpOnly refresh cookie rotation)
-  - Role-based authorization (`hr`, `manager`, `employee`)
-  - Login, Logout, Refresh, Change Password endpoints
-  - Responsive shell layout with desktop sidebar, mobile offcanvas drawer, and topbar user menu
-  - 15 automated auth tests (100% pass)
-- ✅ **Chapter 2 — Employee & Department Management**
-  - Full Department CRUD with conflict detection and employee-check deletion protection
-  - Workforce Employee directory with server pagination, sorting, and regex search
-  - Manager-scoped team directory (isolated direct reports)
-  - Public Colleague Directory accessible by all authenticated roles
-  - HR employee creation with secure one-time temporary password generation & copy modal
-  - Self-service personal profile editor (`PATCH /api/employees/me`) with strict schema validation
-  - Employee status toggle (active/inactive) with session invalidation (`tokenVersion` increment)
-  - Protection guards: HR cannot demote/deactivate self; cannot deactivate last HR administrator
-  - 19 automated employee & department tests (100% pass)
-- ✅ **Chapter 3 — Leave Management**
-  - Leave Types CRUD with 409 deletion guard for active request records
-  - Official Company Holidays management with duplicate date conflict detection
-  - Working-day calculation service excluding weekends and holidays, with half-day single-day toggle
-  - Live day preview endpoint (`GET /api/leaves/preview`) with holiday and weekend exclusion warnings
-  - Complete leave request lifecycle: Apply, Approve, Reject (with required note), and Cancel
-  - Concurrency race condition prevention: conditional atomic `findOneAndUpdate({ _id, status: 'pending' })` prevents double-approval
-  - Role-based routing: employee with manager routes to manager; employee without manager or manager routes to HR pool
-  - Self-approval protection: no user (including HR) can approve their own request; peer HR approval required
-  - Strict calendar year boundary enforcement (no year-spanning leaves)
-  - Annual leave balances tracking (allocated, used, pending, available) with HR quota adjustment guard
-  - CSS Grid interactive Leave & Holiday Calendar with monthly navigation and role scoping
-  - 22 automated leave management tests (100% pass, total 56 tests across suite)
-- ✅ **Chapter 4 — Attendance & Announcements/News**
-  - Attendance State Machine: Daily check-in and check-out tracking with server clock authority
-  - Company Timezone Date Alignment: Timestamps converted to `YYYY-MM-DD` using company timezone (`Asia/Kolkata`)
-  - Automated Late Detection: Evaluates arrival against `WORK_START + LATE_GRACE_MINUTES` (09:45)
-  - Work Duration & Status Thresholds: >= 8h present, >= 4h half-day, otherwise absent with insufficient hours note
-  - Leave Blocking: Prevents daily check-in if user has an approved leave on that date
-  - Weekend / Non-working Day Flagging: Check-in permitted but marked as non-working day
-  - Real-time Dashboard Clock Widget: Live sync clock, live elapsed timer, dynamic check-in/out buttons
-  - My Attendance: Monthly calendar breakdown, derived day statuses, KPI counters (present, late, half-day, absent, leaves, total hours)
-  - Manager Team Attendance: Daily team status overview with real-time quick filters (all, present, late, on leave, not checked in)
-  - HR Attendance Management: Daily logs with pagination & filtering, monthly aggregation table, and Excel-safe CSV export (with formula-injection escaping for `= + - @`)
-  - Attendance Corrections & Audit Trail: HR manual corrections and missing day creation with mandatory reason and history logs
-  - Announcements Engine: Role-based audience filtering (`all`, `employee`, `manager`, `hr`), priority tags, and pin-to-top sorting
-  - Scheduled & Expiring Announcements: Automated visibility filtering (`publishAt <= now` and `expiresAt > now`), HR manage table for scheduled/live/expired states
-  - XSS-Safe Text Rendering: Script injection tags (`<script>`, `<iframe>`) safely displayed as harmless plain text
-  - 15 automated attendance and announcement tests (100% pass, total 71 tests across suite)
+# Inspect running services
+docker compose ps
 
-## API
-See `docs/StaffSync.postman_collection.json` for the Postman collection.
-
-## Architecture
+# Access the application
+# Frontend & API are served simultaneously on http://localhost:5000
 ```
-staffsync/
-├─ server/          # Express 5 + Mongoose 9 backend
-│  └─ src/
-│     ├─ config/    # env, db, constants
-│     ├─ models/    # Mongoose models
-│     ├─ routes/    # Express routers
-│     ├─ controllers/
-│     ├─ services/  # business logic
-│     ├─ middleware/ # auth, authorize, validate, error
-│     ├─ validators/ # Zod schemas
-│     ├─ utils/     # ApiError, dates, pagination
-│     └─ seed/      # idempotent seed script
-└─ client/          # React 19 + Vite + Bootstrap 5.3
-   └─ src/
-      ├─ api/       # axios instance per resource
-      ├─ context/   # AuthContext, ToastContext
-      ├─ layouts/   # AppLayout, AuthLayout
-      ├─ components/ # shared UI components
-      └─ pages/     # feature pages
+
+---
+
+## 🔑 Demo Test Accounts
+
+All demo accounts are created by the idempotent seed script with password: **`Passw0rd!23`**
+
+| Role | Email | Name | Designation | Department |
+|---|---|---|---|---|
+| **HR Admin** | `hr@staffsync.test` | Sarah Jenkins | Chief HR Officer | Human Resources |
+| **HR Specialist** | `hr2@staffsync.test` | David Miller | HR Operations Lead | Human Resources |
+| **Manager** | `manager@staffsync.test` | Marcus Chen | Engineering Manager | Engineering |
+| **Employee** | `employee1@staffsync.test` | Priya Sharma | Senior Full Stack Engineer | Engineering |
+| **Employee** | `employee2@staffsync.test` | Alex Rivera | DevOps Engineer | Engineering |
+| **Employee** | `employee3@staffsync.test` | Emma Watson | UI/UX Designer | Product Design |
+
+---
+
+## 🧪 Automated Testing Suite
+
+The application is backed by comprehensive integration and unit tests using **Vitest**, **Supertest**, and **mongodb-memory-server** (no external DB required during tests).
+
+```bash
+# Run all automated test suites
+npm test
+
+# Run tests with coverage
+cd server && npx vitest run --coverage
 ```
+
+### Test Suite Results (86 / 86 Tests Passing - 100% Green):
+- ✅ `tests/auth.test.js` (15 tests): Authentication, JWT token rotation, password change, lockout, rate limiting.
+- ✅ `tests/employees.test.js` (19 tests): Department CRUD, employee directory, manager scoping, self-profile editor, deactivation guards.
+- ✅ `tests/leaves.test.js` (22 tests): Leave policies, working-day calculations, double-approval concurrency guards, quota balances, calendar.
+- ✅ `tests/attendance.test.js` (15 tests): Check-in/out state machine, late calculation, timezone rollover, CSV formula-injection escaping, announcements audience & XSS sanitization.
+- ✅ `tests/training.test.js` (15 tests): Training lifecycle, capacity limits, manager direct-report scoping, employee progress & feedback, dashboard aggregation payloads, NoSQL injection resistance.
+
+---
+
+## 📡 API Reference Overview
+
+The API is fully documented and exportable via [`docs/StaffSync.postman_collection.json`](docs/StaffSync.postman_collection.json).
+
+| Category | Method | Path | Access |
+|---|---|---|---|
+| **Health** | `GET` | `/api/health` | Public |
+| **Auth** | `POST` | `/api/auth/login` | Public |
+| | `POST` | `/api/auth/refresh` | Cookie |
+| | `GET` | `/api/auth/me` | Authenticated |
+| | `POST` | `/api/auth/change-password` | Authenticated |
+| | `POST` | `/api/auth/logout` | Authenticated |
+| **Departments** | `GET` | `/api/departments` | Authenticated |
+| | `POST` / `PUT` / `DELETE` | `/api/departments/:id` | HR Only |
+| **Employees** | `GET` | `/api/employees` | HR, Manager (scoped) |
+| | `GET` | `/api/employees/directory` | Authenticated |
+| | `GET` | `/api/employees/team` | Manager Only |
+| | `POST` | `/api/employees` | HR Only |
+| | `PATCH` | `/api/employees/me` | Authenticated (self) |
+| | `PATCH` | `/api/employees/:id/status` | HR Only |
+| | `POST` | `/api/employees/:id/reset-password` | HR Only |
+| **Leaves** | `GET` / `POST` | `/api/leaves/types` | HR Only |
+| | `GET` / `POST` / `DELETE` | `/api/leaves/holidays` | Authenticated (GET) / HR |
+| | `GET` | `/api/leaves/preview` | Authenticated |
+| | `GET` / `POST` | `/api/leaves/requests` | Authenticated |
+| | `PATCH` | `/api/leaves/requests/:id/decide` | Manager / HR |
+| | `PATCH` | `/api/leaves/requests/:id/cancel` | Authenticated (owner) |
+| | `GET` | `/api/leaves/calendar` | Authenticated |
+| | `GET` / `PATCH` | `/api/leaves/balances` | Authenticated / HR |
+| **Attendance** | `POST` | `/api/attendance/check-in` | Authenticated |
+| | `POST` | `/api/attendance/check-out` | Authenticated |
+| | `GET` | `/api/attendance/today` | Authenticated |
+| | `GET` | `/api/attendance/my` | Authenticated |
+| | `GET` | `/api/attendance/team` | Manager Only |
+| | `GET` | `/api/attendance/manage` | HR Only |
+| | `GET` | `/api/attendance/export.csv` | HR Only |
+| | `POST` | `/api/attendance/correct` | HR Only |
+| **Announcements**| `GET` | `/api/announcements` | Authenticated (filtered) |
+| | `GET` | `/api/announcements/manage` | HR Only |
+| | `POST` / `PUT` / `DELETE` | `/api/announcements/:id` | HR Only |
+| | `PATCH` | `/api/announcements/:id/pin` | HR Only |
+| **Training** | `GET` | `/api/training` | Authenticated (scoped) |
+| | `POST` / `PUT` / `DELETE` | `/api/training/:id` | Manager Only |
+| | `PATCH` | `/api/training/:id/status` | Manager Only |
+| | `POST` | `/api/training/:id/enroll` | Manager Only |
+| | `DELETE` | `/api/training/:id/enroll/:userId` | Manager Only |
+| | `GET` | `/api/training/my` | Authenticated |
+| | `PATCH` | `/api/training/enrollments/:id` | Authenticated |
+| | `GET` | `/api/training/reports/summary` | Manager / HR |
+| **Dashboard** | `GET` | `/api/dashboard` | Authenticated (role tailored) |
+
+---
+
+## 🌐 Production Single-Service Deployment Guide
+
+StaffSync is architected to deploy easily to container platforms such as **Render**, **Railway**, or **Fly.io** paired with a **MongoDB Atlas** cluster.
+
+1. **Build Step**: Express serves the compiled React client (`client/dist`) via static middleware and Express 5 splat routing `app.get('/{*splat}', ...)` returning `index.html`.
+2. **Reverse Proxy Trust**: The backend enables `trust proxy` in production, ensuring correct IP resolution for rate limiters behind Cloudflare/Render load balancers.
+3. **Environment Setup**:
+   - `NODE_ENV=production`
+   - `PORT=5000`
+   - `MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/staffsync?retryWrites=true&w=majority`
+   - `JWT_ACCESS_SECRET=<generated 64-character random string>`
+   - `JWT_REFRESH_SECRET=<generated 64-character random string>`
+   - `CLIENT_ORIGIN=https://staffsync.yourdomain.com`
+4. **Seed Initial Admin**:
+   - Run `node server/src/seed/seed.js` once with a custom `SEED_PASSWORD`.
+   - Log in immediately at `/login` and change the HR password via `/profile`.
+
+---
+
+## 🛡️ Security & Hardening Highlights
+- **Token Security**: Access tokens reside exclusively in JavaScript memory; refresh tokens are stored in `httpOnly`, `SameSite=Lax`, `Secure` (production) cookies.
+- **Atomic Operations**: Double-approval and capacity race conditions are prevented with conditional atomic updates (`findOneAndUpdate`).
+- **Injection Protection**: Strict Zod schemas reject extra keys (`.strict()`), query search inputs escape regex meta-characters, and CSV exports escape formula injection symbols (`=`, `+`, `-`, `@`).
+- **Content Security**: Helmet headers and strict plain-text rendering neutralize Cross-Site Scripting (XSS).
+
+---
+
+## 📄 License
+ISC © StaffSync Team

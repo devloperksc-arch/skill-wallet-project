@@ -14,8 +14,15 @@ import holidayRoutes from './routes/holiday.routes.js';
 import leaveRoutes from './routes/leave.routes.js';
 import attendanceRoutes from './routes/attendance.routes.js';
 import announcementRoutes from './routes/announcement.routes.js';
+import trainingRoutes from './routes/training.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/error.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export function createApp() {
   const app = express();
@@ -75,6 +82,22 @@ export function createApp() {
   app.use('/api/leaves', leaveRoutes);
   app.use('/api/attendance', attendanceRoutes);
   app.use('/api/announcements', announcementRoutes);
+  app.use('/api/training', trainingRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
+
+  // Production static client serving
+  const clientDist = path.resolve(__dirname, '../../client/dist');
+  app.use(express.static(clientDist));
+
+  // Express 5 catch-all splat for SPA routing on non-API paths
+  app.get('/{*splat}', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.join(clientDist, 'index.html'), (err) => {
+      if (err) next();
+    });
+  });
 
   // 404 + error handler
   app.use(notFound);

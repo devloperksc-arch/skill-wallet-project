@@ -77,3 +77,16 @@ Recorded after `npm install` on 2026-10-25.
 26. **CSV Formula Injection Sanitization**: All cells in attendance CSV export streams are sanitized by prepending a single quote (`'`) to any cell whose string value begins with Excel/Sheets formula triggers: `=`, `+`, `-`, or `@`.
 27. **Announcement Rendering & XSS Security**: Announcement bodies are rendered strictly as plain text (with preserved line breaks via CSS `white-space: pre-line`) or sanitized safe markup, ensuring scripts such as `<script>alert(1)</script>` or malicious iframe payloads are safely inert.
 28. **Audience Filtering & Visibility Pipeline**: Announcements are filtered at query-time: visible when `publishAt <= now`, `expiresAt` is null or `> now`, and `audience` includes `'all'` or the user's authenticated `role`. Pinned items are given sorting priority (`isPinned: -1, publishAt: -1`). HR management views can inspect scheduled, live, and expired items.
+
+## Chapter 5
+
+### Decisions Made
+
+29. **Training Lifecycle State Machine & Capacity Guard**: Training programs transition through `draft` -> `scheduled` -> `ongoing` -> `completed` (or `cancelled`). Only `draft` and `scheduled` programs can have core details updated. Capacity is strictly enforced before committing enrollments. Enrollments are guarded by a unique compound index `{ program: 1, user: 1 }` preventing duplicate enrollments (409 Conflict). Programs may only be permanently deleted if in `draft` status with zero enrollments; otherwise, cancellation is required.
+30. **Direct Reports Scoping for Training Enrollments**: Managers can enroll only employees who are confirmed direct reports (`user.manager == manager._id`), preventing cross-department or unauthorized enrollments.
+31. **Drop vs. Unenroll Lifecycle Rule**: Removing an enrollment before training start deletes the record; if progress has already been logged, the status is marked `dropped` to preserve the complete audit history.
+32. **Unified Aggregated Dashboard (`/api/dashboard`)**: Single high-performance endpoint returning a tailored payload based on authenticated role (`hr`, `manager`, `employee`). Eliminates frontend waterfall requests and powers widgets in a single HTTP roundtrip.
+33. **Zero-Dependency Accessible Inline SVG Charts**: Implemented pure React SVG components for Department Headcount (Bar Chart), Leave Status Distribution (Donut Chart), and 30-Day Attendance Rate (Trend Line Chart) with screen-reader data tables and ARIA tags, avoiding bundle bloat.
+34. **Express 5 Static Asset Serving & SPA Splat Routing**: In production, Express directly serves static bundles from `client/dist`. Client-side routes are resolved with Express 5 splat syntax `app.get('/{*splat}', ...)` returning `index.html`, while unmapped `/api/*` requests return structured JSON 404 responses.
+35. **Multi-Stage Alpine Docker Build & Non-Root Execution**: Containerized via multi-stage build with `node:24-alpine`. Runs with a non-root `node` user for defense-in-depth security.
+

@@ -13,6 +13,7 @@ import Tabs from 'react-bootstrap/Tabs';
 import Tab from 'react-bootstrap/Tab';
 import { getUserBalances } from '../../api/leaves.js';
 import { getAllAttendance } from '../../api/attendance.js';
+import { getUserEnrollments } from '../../api/training.js';
 import AdjustBalanceModal from '../../components/leaves/AdjustBalanceModal.jsx';
 
 export default function EmployeeDetail() {
@@ -40,6 +41,9 @@ export default function EmployeeDetail() {
 
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+
+  const [trainings, setTrainings] = useState([]);
+  const [trainingsLoading, setTrainingsLoading] = useState(false);
 
   const fetchEmployee = useCallback(async () => {
     try {
@@ -78,6 +82,18 @@ export default function EmployeeDetail() {
     }
   }, [id]);
 
+  const fetchTrainings = useCallback(async () => {
+    try {
+      setTrainingsLoading(true);
+      const data = await getUserEnrollments(id);
+      setTrainings(data || []);
+    } catch (err) {
+      console.error('Failed to load employee training enrollments', err);
+    } finally {
+      setTrainingsLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchEmployee();
   }, [fetchEmployee]);
@@ -87,8 +103,10 @@ export default function EmployeeDetail() {
       fetchLeaveBalances();
     } else if (activeTab === 'attendance') {
       fetchAttendanceLogs();
+    } else if (activeTab === 'training') {
+      fetchTrainings();
     }
-  }, [activeTab, fetchLeaveBalances, fetchAttendanceLogs]);
+  }, [activeTab, fetchLeaveBalances, fetchAttendanceLogs, fetchTrainings]);
 
   const handleToggleStatus = async () => {
     if (!employee) return;
@@ -447,11 +465,99 @@ export default function EmployeeDetail() {
             </div>
           </Tab>
 
-          <Tab eventKey="training" title="Training (Ch. 5)">
-            <div className="text-center py-5 text-muted">
-              <i className="bi bi-mortarboard fs-1 mb-2 d-block opacity-50"></i>
-              <h6 className="fw-bold">Training & Development</h6>
-              <p className="small mb-0">Skill development programs and enrollments will unlock in Chapter 5.</p>
+          <Tab eventKey="training" title="Training & Skills">
+            <div className="pt-2">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h6 className="fw-bold text-dark mb-0">Enrolled Training Programs</h6>
+                <button className="btn btn-outline-secondary btn-sm" onClick={fetchTrainings}>
+                  <i className="bi bi-arrow-clockwise me-1"></i> Refresh
+                </button>
+              </div>
+
+              {trainingsLoading ? (
+                <div className="text-center py-5 text-muted">
+                  <Spinner animation="border" size="sm" variant="primary" />
+                  <span className="ms-2">Loading training records...</span>
+                </div>
+              ) : trainings.length === 0 ? (
+                <div className="text-center py-5 text-muted border rounded-3 bg-light-subtle">
+                  <i className="bi bi-mortarboard fs-2 mb-2 d-block opacity-50"></i>
+                  This employee is not currently enrolled in any training programs.
+                </div>
+              ) : (
+                <div className="table-responsive border rounded-3">
+                  <table className="table table-hover align-middle mb-0">
+                    <thead className="table-light small text-uppercase">
+                      <tr>
+                        <th className="ps-3">Program Title</th>
+                        <th>Type / Mode</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>Score</th>
+                        <th className="pe-3">Feedback / Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {trainings.map((t) => (
+                        <tr key={t._id}>
+                          <td className="ps-3">
+                            <div className="fw-semibold text-dark">{t.program?.title || 'Program'}</div>
+                            <div className="small text-muted">
+                              Trainer: {t.program?.trainer || 'Internal'}
+                            </div>
+                          </td>
+                          <td>
+                            <span className="badge bg-light text-dark border text-capitalize me-1">
+                              {t.program?.type?.replace('_', ' ') || 'Technical'}
+                            </span>
+                            <span className="badge bg-light text-secondary border text-capitalize">
+                              {t.program?.mode || 'online'}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                t.status === 'completed'
+                                  ? 'bg-success-subtle text-success border border-success-subtle'
+                                  : t.status === 'in_progress'
+                                  ? 'bg-warning-subtle text-warning border border-warning-subtle'
+                                  : 'bg-info-subtle text-info border border-info-subtle'
+                              }`}
+                            >
+                              {t.status?.replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td style={{ minWidth: '110px' }}>
+                            <div className="d-flex align-items-center gap-2">
+                              <div className="progress flex-grow-1" style={{ height: '6px' }}>
+                                <div
+                                  className={`progress-bar ${t.progress === 100 ? 'bg-success' : 'bg-primary'}`}
+                                  style={{ width: `${t.progress || 0}%` }}
+                                ></div>
+                              </div>
+                              <span className="small fw-semibold">{t.progress || 0}%</span>
+                            </div>
+                          </td>
+                          <td>
+                            {t.score != null ? (
+                              <span className="badge bg-success-subtle text-success border border-success-subtle fw-bold">
+                                {t.score} / 100
+                              </span>
+                            ) : (
+                              <span className="text-muted">—</span>
+                            )}
+                          </td>
+                          <td className="pe-3 small text-secondary">
+                            {t.feedback && <div className="text-truncate" style={{ maxWidth: '180px' }}>Feedback: {t.feedback}</div>}
+                            {t.managerNote && <div className="text-truncate text-muted" style={{ maxWidth: '180px' }}>Note: {t.managerNote}</div>}
+                            {!t.feedback && !t.managerNote && <span className="text-muted">—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </Tab>
         </Tabs>

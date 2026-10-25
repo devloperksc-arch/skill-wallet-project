@@ -1,87 +1,63 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { employeeApi } from '../../api/employees.js';
-import { departmentApi } from '../../api/departments.js';
-import { getPendingApprovals } from '../../api/leaves.js';
-import { getAllAttendance } from '../../api/attendance.js';
-import { getLatestAnnouncements } from '../../api/announcements.js';
+import { getDashboardData } from '../../api/dashboard.js';
 import AnnouncementCard from '../../components/announcements/AnnouncementCard.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import StatCard from '../../components/StatCard.jsx';
+import {
+  DepartmentBarChart,
+  LeaveStatusDonutChart,
+  AttendanceTrendLineChart,
+} from '../../components/dashboard/Charts.jsx';
 import { useNavigate } from 'react-router';
 
 export default function HrDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const todayStr = new Date().toISOString().split('T')[0];
 
-  const [metrics, setMetrics] = useState({
-    totalEmployees: '—',
-    activeEmployees: '—',
-    totalDepartments: '—',
-    pendingLeaves: '—',
-    presentToday: '—',
-    lateToday: 0,
-    loading: true,
-  });
-  const [announcements, setAnnouncements] = useState([]);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
-    async function loadMetrics() {
+    async function load() {
       try {
-        const [empRes, deptRes, pendingRes, attRes, annRes] = await Promise.all([
-          employeeApi.list({ limit: 1 }),
-          departmentApi.list(),
-          getPendingApprovals().catch(() => ({ leaves: [] })),
-          getAllAttendance({ date: todayStr, limit: 1000 }).catch(() => ({ count: 0, attendance: [] })),
-          getLatestAnnouncements(3).catch(() => []),
-        ]);
+        const res = await getDashboardData();
         if (isMounted) {
-          const presentCount = attRes.attendance?.filter((a) => a.status === 'present' || a.status === 'half-day').length || 0;
-          const lateCount = attRes.attendance?.filter((a) => a.isLate).length || 0;
-
-          setMetrics({
-            totalEmployees: empRes.data.pagination?.total ?? '—',
-            activeEmployees: empRes.data.pagination?.total ?? '—',
-            totalDepartments: deptRes.data.data?.length ?? '—',
-            pendingLeaves: pendingRes.leaves?.length ?? 0,
-            presentToday: presentCount,
-            lateToday: lateCount,
-            loading: false,
-          });
-          setAnnouncements(annRes || []);
+          setDashboardData(res.data);
+          setLoading(false);
         }
       } catch (err) {
-        if (isMounted) {
-          setMetrics((prev) => ({ ...prev, loading: false }));
-        }
+        console.error('Failed to load HR dashboard data', err);
+        if (isMounted) setLoading(false);
       }
     }
-    loadMetrics();
+    load();
     return () => {
       isMounted = false;
     };
-  }, [todayStr]);
+  }, []);
+
+  const d = dashboardData || {};
 
   return (
-    <div>
+    <div className="container-fluid py-4">
       <PageHeader
-        title="HR Overview"
-        subtitle={`Welcome back, ${user?.name || 'Administrator'}. Here is what's happening across the organization.`}
+        title="Executive HR Overview"
+        subtitle={`Welcome back, ${user?.name || 'Administrator'}. Here is your organizational pulse and real-time operations overview.`}
       />
 
-      {/* Hero Welcome Card */}
+      {/* Hero Welcome Banner */}
       <div className="card border-0 bg-primary text-white rounded-4 shadow-sm mb-4 p-4 overflow-hidden position-relative">
         <div className="position-relative" style={{ zIndex: 1 }}>
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div>
               <span className="badge bg-white text-primary fw-semibold mb-2 px-3 py-1 rounded-pill">
-                HR Administration Portal
+                HR Administration & Analytics
               </span>
               <h3 className="fw-bold mb-1">{user?.name}</h3>
               <p className="text-white-50 mb-0">
-                {user?.designation || 'HR Manager'} &bull; {user?.department?.name || 'Human Resources'} &bull; Code: {user?.employeeCode}
+                {user?.designation || 'HR Director'} &bull; {user?.department?.name || 'Human Resources'} &bull; Employee Code: {user?.employeeCode}
               </p>
             </div>
             <div className="d-flex gap-2">
@@ -95,161 +71,202 @@ export default function HrDashboard() {
                 className="btn btn-light text-primary fw-semibold px-3 py-2 rounded-3 shadow-sm"
                 onClick={() => navigate('/employees')}
               >
-                <i className="bi bi-people me-1"></i> Manage Workforce
+                <i className="bi bi-people me-1"></i> Workforce
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Key Metrics / StatCards */}
+      {/* Primary KPI Row */}
       <div className="row g-3 mb-4">
         <div className="col-12 col-sm-6 col-xl-3" style={{ cursor: 'pointer' }} onClick={() => navigate('/employees')}>
           <StatCard
-            title="Total Employees"
-            value={metrics.totalEmployees}
+            title="Total Workforce"
+            value={loading ? '—' : d.totalEmployees}
             icon="bi-people-fill"
             color="primary"
-            trend="Workforce directory"
+            trend={`${d.activeEmployees || 0} active employees`}
           />
         </div>
         <div className="col-12 col-sm-6 col-xl-3" style={{ cursor: 'pointer' }} onClick={() => navigate('/attendance')}>
           <StatCard
             title="Present Today"
-            value={metrics.presentToday}
+            value={loading ? '—' : d.presentToday}
             icon="bi-person-check-fill"
             color="success"
-            trend={`${metrics.lateToday} late arrivals`}
+            trend={`${d.lateToday || 0} late arrivals`}
           />
         </div>
         <div className="col-12 col-sm-6 col-xl-3" style={{ cursor: 'pointer' }} onClick={() => navigate('/leaves/requests')}>
           <StatCard
             title="Pending Leaves"
-            value={metrics.pendingLeaves}
+            value={loading ? '—' : d.pendingLeaves}
             icon="bi-calendar2-check"
             color="warning"
-            trend="Awaiting HR review"
+            trend={`${d.onLeaveToday || 0} on leave today`}
           />
         </div>
-        <div className="col-12 col-sm-6 col-xl-3" style={{ cursor: 'pointer' }} onClick={() => navigate('/departments')}>
+        <div className="col-12 col-sm-6 col-xl-3" style={{ cursor: 'pointer' }} onClick={() => navigate('/trainings')}>
           <StatCard
-            title="Departments"
-            value={metrics.totalDepartments}
-            icon="bi-building"
+            title="Training Completion"
+            value={loading ? '—' : `${d.trainingCompletionRate || 0}%`}
+            icon="bi-mortarboard-fill"
             color="info"
-            trend="Active divisions"
+            trend="Org skill proficiency"
           />
         </div>
       </div>
 
-      {/* Latest Announcements */}
-      <div className="card border-0 shadow-sm rounded-4 mb-4 bg-white">
-        <div className="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-          <div className="d-flex align-items-center gap-2">
-            <i className="bi bi-megaphone text-primary fs-5"></i>
-            <h5 className="fw-bold text-dark mb-0">Company Announcements</h5>
-          </div>
-          <div className="d-flex gap-2">
-            <button
-              className="btn btn-outline-primary btn-sm"
-              onClick={() => navigate('/announcements/manage')}
-            >
-              <i className="bi bi-gear me-1"></i> Manage Bulletins
-            </button>
-            <button
-              className="btn btn-outline-secondary btn-sm"
-              onClick={() => navigate('/announcements')}
-            >
-              Feed &rarr;
-            </button>
+      {/* Analytics Charts Row */}
+      <div className="row g-4 mb-4">
+        {/* Department Headcount Bar Chart */}
+        <div className="col-12 col-lg-7">
+          <div className="card shadow-sm border-0 rounded-4 p-4 h-100 bg-white">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h5 className="fw-bold text-dark mb-0">Department Headcount Distribution</h5>
+                <small className="text-muted">Active employee counts across business units</small>
+              </div>
+              <button className="btn btn-outline-secondary btn-sm" onClick={() => navigate('/departments')}>
+                View Units &rarr;
+              </button>
+            </div>
+            {loading ? (
+              <div className="text-center py-5 text-muted">
+                <div className="spinner-border spinner-border-sm text-primary me-2"></div>
+                Loading department metrics...
+              </div>
+            ) : (
+              <DepartmentBarChart data={d.headcountByDepartment || []} />
+            )}
           </div>
         </div>
-        <div className="card-body p-4">
-          {metrics.loading ? (
-            <div className="text-center py-4 text-muted">
-              <div className="spinner-border spinner-border-sm text-primary me-2"></div>
-              Loading bulletins...
+
+        {/* Leave Requests Donut Chart */}
+        <div className="col-12 col-lg-5">
+          <div className="card shadow-sm border-0 rounded-4 p-4 h-100 bg-white">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h5 className="fw-bold text-dark mb-0">Leave Status Distribution</h5>
+                <small className="text-muted">Applications breakdown this year</small>
+              </div>
+              <button className="btn btn-outline-secondary btn-sm" onClick={() => navigate('/leaves/requests')}>
+                Requests &rarr;
+              </button>
             </div>
-          ) : announcements.length === 0 ? (
-            <div className="text-center py-4 text-muted">
-              No active announcements posted yet.
+            {loading ? (
+              <div className="text-center py-5 text-muted">
+                <div className="spinner-border spinner-border-sm text-primary me-2"></div>
+                Loading leave distribution...
+              </div>
+            ) : (
+              <LeaveStatusDonutChart data={d.leaveRequestsByStatus} />
+            )}
+          </div>
+        </div>
+
+        {/* 30-Day Attendance Trend Line Chart */}
+        <div className="col-12">
+          <div className="card shadow-sm border-0 rounded-4 p-4 bg-white">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <div>
+                <h5 className="fw-bold text-dark mb-0">30-Day Attendance Rate Trend</h5>
+                <small className="text-muted">Company-wide daily presence percentage over the last 30 calendar days</small>
+              </div>
+              <button className="btn btn-outline-secondary btn-sm" onClick={() => navigate('/attendance')}>
+                Attendance Report &rarr;
+              </button>
             </div>
-          ) : (
-            announcements.map((item) => (
-              <AnnouncementCard key={item._id} announcement={item} />
-            ))
-          )}
+            {loading ? (
+              <div className="text-center py-5 text-muted">
+                <div className="spinner-border spinner-border-sm text-primary me-2"></div>
+                Loading attendance trend...
+              </div>
+            ) : (
+              <AttendanceTrendLineChart data={d.attendanceRateTrend || []} />
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Quick Nav Action Cards */}
-      <div className="row g-3">
-        <div className="col-12 col-md-4">
-          <div className="card border-0 shadow-sm rounded-4 h-100 p-4">
-            <div className="d-flex align-items-center gap-3 mb-3">
-              <div className="bg-primary-subtle text-primary rounded-3 p-3 d-flex align-items-center justify-content-center">
-                <i className="bi bi-person-lines-fill fs-4"></i>
+      {/* Announcements & Holidays Row */}
+      <div className="row g-4 mb-4">
+        <div className="col-12 col-lg-8">
+          <div className="card border-0 shadow-sm rounded-4 h-100 bg-white">
+            <div className="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+              <div className="d-flex align-items-center gap-2">
+                <i className="bi bi-megaphone text-primary fs-5"></i>
+                <h5 className="fw-bold text-dark mb-0">Company Announcements</h5>
               </div>
-              <div>
-                <h6 className="fw-bold mb-0">Employee Directory</h6>
-                <small className="text-muted">Workforce records</small>
+              <div className="d-flex gap-2">
+                <button
+                  className="btn btn-outline-primary btn-sm"
+                  onClick={() => navigate('/announcements/manage')}
+                >
+                  <i className="bi bi-gear me-1"></i> Manage
+                </button>
+                <button
+                  className="btn btn-outline-secondary btn-sm"
+                  onClick={() => navigate('/announcements')}
+                >
+                  Feed &rarr;
+                </button>
               </div>
             </div>
-            <p className="text-muted small mb-3">
-              View and manage employee profiles, departments, managers, and account statuses.
-            </p>
-            <button
-              className="btn btn-outline-primary btn-sm rounded-2 mt-auto"
-              onClick={() => navigate('/employees')}
-            >
-              Explore Directory &rarr;
-            </button>
+            <div className="card-body p-4">
+              {loading ? (
+                <div className="text-center py-4 text-muted">
+                  <div className="spinner-border spinner-border-sm text-primary me-2"></div>
+                  Loading bulletins...
+                </div>
+              ) : !d.latestAnnouncements || d.latestAnnouncements.length === 0 ? (
+                <div className="text-center py-4 text-muted">No active announcements posted yet.</div>
+              ) : (
+                d.latestAnnouncements.map((item) => (
+                  <AnnouncementCard key={item._id} announcement={item} />
+                ))
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="col-12 col-md-4">
-          <div className="card border-0 shadow-sm rounded-4 h-100 p-4">
-            <div className="d-flex align-items-center gap-3 mb-3">
-              <div className="bg-success-subtle text-success rounded-3 p-3 d-flex align-items-center justify-content-center">
-                <i className="bi bi-clock-history fs-4"></i>
+        {/* Upcoming Holidays */}
+        <div className="col-12 col-lg-4">
+          <div className="card border-0 shadow-sm rounded-4 h-100 bg-white">
+            <div className="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+              <div className="d-flex align-items-center gap-2">
+                <i className="bi bi-calendar-event text-warning fs-5"></i>
+                <h5 className="fw-bold text-dark mb-0">Upcoming Holidays</h5>
               </div>
-              <div>
-                <h6 className="fw-bold mb-0">Attendance Tracking</h6>
-                <small className="text-muted">Time & daily logs</small>
-              </div>
+              <button
+                className="btn btn-outline-secondary btn-sm"
+                onClick={() => navigate('/leaves/calendar')}
+              >
+                Calendar &rarr;
+              </button>
             </div>
-            <p className="text-muted small mb-3">
-              Review daily check-ins, monthly summaries, download Excel/CSV reports, and correct times.
-            </p>
-            <button
-              className="btn btn-outline-success btn-sm rounded-2 mt-auto"
-              onClick={() => navigate('/attendance')}
-            >
-              Manage Attendance &rarr;
-            </button>
-          </div>
-        </div>
-
-        <div className="col-12 col-md-4">
-          <div className="card border-0 shadow-sm rounded-4 h-100 p-4">
-            <div className="d-flex align-items-center gap-3 mb-3">
-              <div className="bg-info-subtle text-info rounded-3 p-3 d-flex align-items-center justify-content-center">
-                <i className="bi bi-megaphone-fill fs-4"></i>
-              </div>
-              <div>
-                <h6 className="fw-bold mb-0">Announcements</h6>
-                <small className="text-muted">Company communications</small>
-              </div>
+            <div className="card-body p-3">
+              {loading ? (
+                <div className="text-center py-4 text-muted">Loading holidays...</div>
+              ) : !d.upcomingHolidays || d.upcomingHolidays.length === 0 ? (
+                <div className="text-center py-4 text-muted small">No upcoming holidays scheduled.</div>
+              ) : (
+                <ul className="list-group list-group-flush">
+                  {d.upcomingHolidays.map((h) => (
+                    <li key={h._id} className="list-group-item d-flex justify-content-between align-items-center px-2 py-3">
+                      <div>
+                        <div className="fw-semibold text-dark">{h.name}</div>
+                        <small className="text-muted">{h.date}</small>
+                      </div>
+                      <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                        Public Holiday
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            <p className="text-muted small mb-3">
-              Broadcast company-wide updates, policy notices, and pin critical announcements.
-            </p>
-            <button
-              className="btn btn-outline-info btn-sm rounded-2 mt-auto"
-              onClick={() => navigate('/announcements/manage')}
-            >
-              Post Announcements &rarr;
-            </button>
           </div>
         </div>
       </div>

@@ -635,6 +635,162 @@
           }
         }
       ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Data (Role Tailored)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/dashboard",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Training",
+      "item": [
+        {
+          "name": "List Training Programs",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/training?status=all&page=1&limit=10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Training Program",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/training/{{trainingId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Create Training Program (Manager)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/training",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Advanced Node.js & Mongoose Architecture\",\"description\":\"Deep dive into Node.js 24 and Mongoose 9 performance and reliability.\",\"type\":\"technical\",\"mode\":\"online\",\"capacity\":15,\"startDate\":\"2026-11-01\",\"endDate\":\"2026-11-05\",\"trainer\":\"Architecture Team\"}"
+            }
+          }
+        },
+        {
+          "name": "Update Training Program (Manager)",
+          "request": {
+            "method": "PUT",
+            "url": "{{base}}/training/{{trainingId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Advanced Node.js & Mongoose Architecture (Updated)\",\"capacity\":20}"
+            }
+          }
+        },
+        {
+          "name": "Update Program Status (Manager)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base}}/training/{{trainingId}}/status",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"ongoing\"}"
+            }
+          }
+        },
+        {
+          "name": "Enroll Team Members (Manager)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/training/{{trainingId}}/enroll",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"userIds\":[\"{{employeeId}}\"]}"
+            }
+          }
+        },
+        {
+          "name": "Unenroll or Drop Member (Manager)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base}}/training/{{trainingId}}/enroll/{{employeeId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "My Enrollments (Employee)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/training/my",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Update Enrollment Progress / Feedback (Employee)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base}}/training/enrollments/{{enrollmentId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"progress\":50,\"feedback\":\"Great hands-on labs and examples!\"}"
+            }
+          }
+        },
+        {
+          "name": "Record Score & Complete Enrollment (Manager)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base}}/training/enrollments/{{enrollmentId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"score\":92,\"managerNote\":\"Excellent mastery demonstrated.\",\"status\":\"completed\"}"
+            }
+          }
+        },
+        {
+          "name": "Training Summary Reports (Manager & HR)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/training/reports/summary",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Delete Training Program (Manager - Draft only)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base}}/training/{{trainingId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
     }
   ]
 }
