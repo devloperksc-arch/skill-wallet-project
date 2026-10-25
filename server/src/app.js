@@ -31,22 +31,22 @@ export function createApp() {
     app.use(morgan('dev'));
   }
 
-  // Global rate limit: 300 req / 15 min / IP
+  // Global rate limit: 300 req / 15 min / IP (1000 in test)
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: 300,
+      max: env.NODE_ENV === 'test' ? 1000 : 300,
       standardHeaders: true,
       legacyHeaders: false,
     })
   );
 
-  // Stricter rate limit on login: 10 / 15 min / IP
+  // Stricter rate limit on login: 10 / 15 min / IP (100 in test)
   app.use(
     '/api/auth/login',
     rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: 10,
+      max: env.NODE_ENV === 'test' ? 100 : 10,
       standardHeaders: true,
       legacyHeaders: false,
     })

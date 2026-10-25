@@ -6,6 +6,7 @@
   "private": true,
   "scripts": {
     "dev": "node --watch src/server.js",
+    "seed": "node src/seed/seed.js",
     "start": "node src/server.js",
     "test": "vitest run",
     "test:watch": "vitest"
