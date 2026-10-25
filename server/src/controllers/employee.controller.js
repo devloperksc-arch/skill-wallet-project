@@ -3,6 +3,7 @@ import { User, generateEmployeeCode } from '../models/user.model.js';
 import { Department } from '../models/department.model.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ROLES, USER_STATUS } from '../config/constants.js';
+import { ensureBalances } from '../services/leave.service.js';
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -157,6 +158,8 @@ export async function createEmployee(req, res) {
     passwordHash: temporaryPassword, // pre('save') hook will hash this
     mustChangePassword: true,
   });
+
+  await ensureBalances(user._id, new Date().getFullYear());
 
   const created = await User.findById(user._id)
     .populate('department', 'name code')

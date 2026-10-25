@@ -61,7 +61,7 @@ npm run dev
 | `npm run build` | Build the client for production |
 | `npm start` | Start the production server |
 
-## What Works (Chapters 1 & 2)
+## What Works (Chapters 1, 2 & 3)
 - ✅ **Chapter 1 — Foundation, Authentication & Role-Based Shell**
   - JWT authentication (in-memory access token + httpOnly refresh cookie rotation)
   - Role-based authorization (`hr`, `manager`, `employee`)
@@ -77,7 +77,20 @@ npm run dev
   - Self-service personal profile editor (`PATCH /api/employees/me`) with strict schema validation
   - Employee status toggle (active/inactive) with session invalidation (`tokenVersion` increment)
   - Protection guards: HR cannot demote/deactivate self; cannot deactivate last HR administrator
-  - 19 automated employee & department tests (100% pass, total 34 tests)
+  - 19 automated employee & department tests (100% pass)
+- ✅ **Chapter 3 — Leave Management**
+  - Leave Types CRUD with 409 deletion guard for active request records
+  - Official Company Holidays management with duplicate date conflict detection
+  - Working-day calculation service excluding weekends and holidays, with half-day single-day toggle
+  - Live day preview endpoint (`GET /api/leaves/preview`) with holiday and weekend exclusion warnings
+  - Complete leave request lifecycle: Apply, Approve, Reject (with required note), and Cancel
+  - Concurrency race condition prevention: conditional atomic `findOneAndUpdate({ _id, status: 'pending' })` prevents double-approval
+  - Role-based routing: employee with manager routes to manager; employee without manager or manager routes to HR pool
+  - Self-approval protection: no user (including HR) can approve their own request; peer HR approval required
+  - Strict calendar year boundary enforcement (no year-spanning leaves)
+  - Annual leave balances tracking (allocated, used, pending, available) with HR quota adjustment guard
+  - CSS Grid interactive Leave & Holiday Calendar with monthly navigation and role scoping
+  - 22 automated leave management tests (100% pass, total 56 tests across suite)
 
 ## API
 See `docs/StaffSync.postman_collection.json` for the Postman collection.

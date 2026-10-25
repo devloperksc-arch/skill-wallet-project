@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { employeeApi } from '../../api/employees.js';
 import { departmentApi } from '../../api/departments.js';
+import { getPendingApprovals } from '../../api/leaves.js';
 import PageHeader from '../../components/PageHeader.jsx';
 import StatCard from '../../components/StatCard.jsx';
 import { useNavigate } from 'react-router';
@@ -14,6 +15,7 @@ export default function HrDashboard() {
     totalEmployees: '—',
     activeEmployees: '—',
     totalDepartments: '—',
+    pendingLeaves: '—',
     loading: true,
   });
 
@@ -21,15 +23,17 @@ export default function HrDashboard() {
     let isMounted = true;
     async function loadMetrics() {
       try {
-        const [empRes, deptRes] = await Promise.all([
+        const [empRes, deptRes, pendingRes] = await Promise.all([
           employeeApi.list({ limit: 1 }),
           departmentApi.list(),
+          getPendingApprovals().catch(() => ({ leaves: [] })),
         ]);
         if (isMounted) {
           setMetrics({
             totalEmployees: empRes.data.pagination?.total ?? '—',
             activeEmployees: empRes.data.pagination?.total ?? '—',
             totalDepartments: deptRes.data.data?.length ?? '—',
+            pendingLeaves: pendingRes.leaves?.length ?? 0,
             loading: false,
           });
         }
@@ -97,13 +101,13 @@ export default function HrDashboard() {
             trend="Active divisions"
           />
         </div>
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-sm-6 col-xl-3" style={{ cursor: 'pointer' }} onClick={() => navigate('/leaves/requests')}>
           <StatCard
             title="Pending Leaves"
-            value="0"
+            value={metrics.pendingLeaves}
             icon="bi-calendar2-check"
             color="warning"
-            trend="Coming in Chapter 3"
+            trend="Awaiting review"
           />
         </div>
         <div className="col-12 col-sm-6 col-xl-3">

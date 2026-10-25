@@ -11,6 +11,8 @@ import ConfirmModal from '../../components/ConfirmModal.jsx';
 import Spinner from 'react-bootstrap/Spinner';
 import Tabs from 'react-bootstrap/Tabs';
 import Tab from 'react-bootstrap/Tab';
+import { getUserBalances } from '../../api/leaves.js';
+import AdjustBalanceModal from '../../components/leaves/AdjustBalanceModal.jsx';
 
 export default function EmployeeDetail() {
   const { id } = useParams();
@@ -31,6 +33,10 @@ export default function EmployeeDetail() {
 
   const isHr = currentUser?.role === 'hr';
 
+  const [leaveBalances, setLeaveBalances] = useState([]);
+  const [leavesLoading, setLeavesLoading] = useState(false);
+  const [balanceToAdjust, setBalanceToAdjust] = useState(null);
+
   const fetchEmployee = useCallback(async () => {
     try {
       setLoading(true);
@@ -44,9 +50,27 @@ export default function EmployeeDetail() {
     }
   }, [id, navigate, showToast]);
 
+  const fetchLeaveBalances = useCallback(async () => {
+    try {
+      setLeavesLoading(true);
+      const res = await getUserBalances(id, new Date().getFullYear());
+      setLeaveBalances(res.balances || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLeavesLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchEmployee();
   }, [fetchEmployee]);
+
+  useEffect(() => {
+    if (activeTab === 'leaves') {
+      fetchLeaveBalances();
+    }
+  }, [activeTab, fetchLeaveBalances]);
 
   const handleToggleStatus = async () => {
     if (!employee) return;
@@ -240,11 +264,78 @@ export default function EmployeeDetail() {
             </div>
           </Tab>
 
-          <Tab eventKey="leaves" title="Leaves (Ch. 3)">
-            <div className="text-center py-5 text-muted">
-              <i className="bi bi-calendar2-range fs-1 mb-2 d-block opacity-50"></i>
-              <h6 className="fw-bold">Leave Lifecycle Module</h6>
-              <p className="small mb-0">Leave balances, application history, and approval tracking will unlock in Chapter 3.</p>
+          <Tab eventKey="leaves" title="Leave Balances">
+            <div className="p-3">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h6 className="fw-bold mb-0 text-dark">
+                  <i className="bi bi-calendar-check me-2 text-primary"></i>
+                  Annual Leave Quotas & Balances ({new Date().getFullYear()})
+                </h6>
+              </div>
+
+              {leavesLoading ? (
+                <div className="text-center py-4">
+                  <Spinner animation="border" size="sm" variant="primary" />
+                  <span className="ms-2 small text-muted">Loading balances…</span>
+                </div>
+              ) : leaveBalances.length === 0 ? (
+                <div className="text-center py-4 text-muted small">
+                  No leave balance records found for this employee.
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover align-middle mb-0">
+                    <thead className="table-light small">
+                      <tr>
+                        <th>Leave Type</th>
+                        <th>Allocated Quota</th>
+                        <th>Used</th>
+                        <th>Pending</th>
+                        <th>Available</th>
+                        {isHr && <th className="text-end">Actions</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaveBalances.map((b) => {
+                        const lt = b.leaveType || {};
+                        const avail = lt.isUnlimited
+                          ? 'Unlimited'
+                          : Math.max(0, b.allocated - b.used - b.pending);
+
+                        return (
+                          <tr key={b._id}>
+                            <td>
+                              <span className="fw-semibold text-dark">{lt.name}</span>
+                              <span className="badge bg-light text-muted ms-2">{lt.code}</span>
+                            </td>
+                            <td>{lt.isUnlimited ? '∞' : `${b.allocated} days`}</td>
+                            <td><span className="badge bg-info-subtle text-info">{b.used} days</span></td>
+                            <td><span className="badge bg-warning-subtle text-warning">{b.pending} days</span></td>
+                            <td>
+                              <span className="fw-bold text-success">
+                                {avail} {lt.isUnlimited ? '' : 'days'}
+                              </span>
+                            </td>
+                            {isHr && (
+                              <td className="text-end">
+                                {!lt.isUnlimited && (
+                                  <button
+                                    className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                                    onClick={() => setBalanceToAdjust(b)}
+                                  >
+                                    <i className="bi bi-sliders"></i>
+                                    Adjust Quota
+                                  </button>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </Tab>
 
@@ -301,6 +392,17 @@ export default function EmployeeDetail() {
         loading={statusLoading}
         onConfirm={handleToggleStatus}
         onCancel={() => setShowStatusConfirm(false)}
+      />
+
+      {/* Adjust Leave Balance Modal */}
+      <AdjustBalanceModal
+        show={!!balanceToAdjust}
+        balance={balanceToAdjust}
+        onClose={() => setBalanceToAdjust(null)}
+        onSuccess={() => {
+          setBalanceToAdjust(null);
+          fetchLeaveBalances();
+        }}
       />
     </div>
   );

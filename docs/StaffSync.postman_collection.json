@@ -221,6 +221,230 @@
           }
         }
       ]
+    },
+    {
+      "name": "Leave Types",
+      "item": [
+        {
+          "name": "Get All Leave Types",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/leave-types",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Create Leave Type (HR)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/leave-types",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Maternity Leave\",\"code\":\"MATERNITY\",\"annualQuota\":90,\"isPaid\":true,\"isUnlimited\":false,\"isActive\":true}"
+            }
+          }
+        },
+        {
+          "name": "Update Leave Type (HR)",
+          "request": {
+            "method": "PUT",
+            "url": "{{base}}/leave-types/{{leaveTypeId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"annualQuota\":15}"
+            }
+          }
+        },
+        {
+          "name": "Delete Leave Type (HR)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base}}/leave-types/{{leaveTypeId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Holidays",
+      "item": [
+        {
+          "name": "Get Holidays (?year=)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/holidays?year=2026",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Create Holiday (HR)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/holidays",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Diwali\",\"date\":\"2026-11-08\"}"
+            }
+          }
+        },
+        {
+          "name": "Update Holiday (HR)",
+          "request": {
+            "method": "PUT",
+            "url": "{{base}}/holidays/{{holidayId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Deepavali Festival\"}"
+            }
+          }
+        },
+        {
+          "name": "Delete Holiday (HR)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base}}/holidays/{{holidayId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Leaves",
+      "item": [
+        {
+          "name": "Preview Working Days Live",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/leaves/preview?startDate=2026-11-06&endDate=2026-11-10&halfDay=false",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Own Leave Balances",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/leaves/balances?year=2026",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get User Balances (HR / Manager Team)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/leaves/balances/{{userId}}?year=2026",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Adjust Leave Quota (HR)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base}}/leaves/balances/{{balanceId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"allocated\":16,\"reason\":\"Annual policy adjustment\"}"
+            }
+          }
+        },
+        {
+          "name": "Apply for Leave",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/leaves",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"leaveType\":\"{{leaveTypeId}}\",\"startDate\":\"2026-11-16\",\"endDate\":\"2026-11-18\",\"halfDay\":false,\"reason\":\"Vacation with family\"}"
+            }
+          }
+        },
+        {
+          "name": "Get My Leave History",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/leaves/my?year=2026&page=1&limit=10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Pending Approvals (Manager / HR)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/leaves/pending-approvals",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get All Leaves (HR / Manager Team)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/leaves?status=pending&page=1&limit=10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Leave By ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/leaves/{{leaveId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Decide Leave (Approve/Reject)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base}}/leaves/{{leaveId}}/decision",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"decision\":\"approved\",\"note\":\"Approved for vacation\"}"
+            }
+          }
+        },
+        {
+          "name": "Cancel Leave Request",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base}}/leaves/{{leaveId}}/cancel",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Leave & Holiday Calendar (?month=YYYY-MM)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/leaves/calendar?month=2026-11",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
     }
   ]
 }

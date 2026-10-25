@@ -55,3 +55,15 @@ Recorded after `npm install` on 2026-10-25.
 13. **Strict Self-Profile Zod Schema**: `PATCH /api/employees/me` uses `.strict()` schema rejecting any unpermitted fields (role, department, designation, salary).
 14. **Administrative Protection Invariants**: HR administrators cannot deactivate or demote themselves, nor can the last active HR account in the organization be deactivated. Departments with active employees cannot be deleted (returns 409 Conflict).
 15. **Regex Search Sanitization**: All text search queries (`q`) escape special regex characters prior to constructing MongoDB query patterns to prevent regex injection attacks.
+
+## Chapter 3
+
+### Decisions Made
+
+16. **Calendar Year Boundary Policy**: Leave applications spanning across two calendar years (e.g. Dec 30 to Jan 3) are rejected with a 400 error requiring the employee to submit separate requests for each year. This guarantees clear quota rollover, eliminates complex pro-rated year split calculations, and maintains deterministic per-year balances.
+17. **Atomic Double-Approval Concurrency Guard**: Approval and rejection endpoints use conditional atomic update `LeaveRequest.findOneAndUpdate({ _id, status: 'pending' }, ...)`. If the query returns `null`, the request returns `409 Conflict`, guaranteeing that concurrent approvals or approval-rejection races cannot process the same request twice.
+18. **Working Day Calculation Engine**: Working days are dynamically computed in `services/leave.service.js` using UTC dates to avoid local DST/offset discrepancies. Each calendar date is cross-checked against `WEEKEND_DAYS` (Sunday and Saturday) and official `Holiday` records in MongoDB. Half-day requests (0.5 days) are strictly restricted to single-day applications.
+19. **Leave Balance Invariants & Adjustments**: Available balance is strictly computed as `allocated - used - pending`. Applying adds days to `pending`; approval shifts days from `pending` to `used`; rejection or cancellation restores days. HR manual balance adjustments via `PATCH /api/leaves/balances/:id` require a recorded reason and are validated to never drop below `used + pending`.
+20. **Self-Approval Prohibition**: No user, including HR administrators, is permitted to decide on their own leave request (returns `403 Forbidden`). An HR's leave request must be approved by a peer HR administrator. Managers can only approve requests explicitly assigned to them.
+21. **Leave Cancellation Policy**: Employees may cancel pending requests at any time (restoring pending days). Approved leave requests may only be cancelled if the leave `startDate` is strictly in the future (restoring used days). Attempting to cancel past or ongoing approved leave requests returns `400 Bad Request`.
+

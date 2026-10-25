@@ -26,6 +26,13 @@ import MyTeam from './pages/manager/MyTeam.jsx';
 import Directory from './pages/Directory.jsx';
 import MyProfile from './pages/MyProfile.jsx';
 
+// Chapter 3 Pages
+import MyLeaves from './pages/leaves/MyLeaves.jsx';
+import LeaveCalendar from './pages/leaves/LeaveCalendar.jsx';
+import LeaveApprovals from './pages/manager/LeaveApprovals.jsx';
+import LeaveRequests from './pages/hr/LeaveRequests.jsx';
+import LeaveSettings from './pages/hr/LeaveSettings.jsx';
+
 function RootRedirect() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -72,6 +79,8 @@ export default function App() {
                 {/* Common/Shared Routes across all roles */}
                 <Route path="directory" element={<Directory />} />
                 <Route path="profile" element={<MyProfile />} />
+                <Route path="leaves/my" element={<MyLeaves />} />
+                <Route path="leaves/calendar" element={<LeaveCalendar />} />
 
                 {/* HR Restricted Routes */}
                 <Route
@@ -106,6 +115,30 @@ export default function App() {
                     </RoleRoute>
                   }
                 />
+                <Route
+                  path="leaves/requests"
+                  element={
+                    <RoleRoute roles={['hr']}>
+                      <LeaveRequests />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="leaves/settings"
+                  element={
+                    <RoleRoute roles={['hr']}>
+                      <LeaveSettings />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="leaves"
+                  element={
+                    <RoleRoute roles={['hr']}>
+                      <LeaveRequests />
+                    </RoleRoute>
+                  }
+                />
 
                 {/* Manager Routes */}
                 <Route
@@ -125,10 +158,10 @@ export default function App() {
                   }
                 />
                 <Route
-                  path="attendance/team"
+                  path="leaves/approvals"
                   element={
                     <RoleRoute roles={['manager', 'hr']}>
-                      <ComingSoon title="Team Attendance" />
+                      <LeaveApprovals />
                     </RoleRoute>
                   }
                 />
@@ -136,7 +169,15 @@ export default function App() {
                   path="leaves/team"
                   element={
                     <RoleRoute roles={['manager', 'hr']}>
-                      <ComingSoon title="Team Leave Requests" />
+                      <LeaveApprovals />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="attendance/team"
+                  element={
+                    <RoleRoute roles={['manager', 'hr']}>
+                      <ComingSoon title="Team Attendance" />
                     </RoleRoute>
                   }
                 />
@@ -147,14 +188,6 @@ export default function App() {
                   element={
                     <RoleRoute roles={['employee', 'manager', 'hr']}>
                       <EmployeeDashboard />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="leaves/my"
-                  element={
-                    <RoleRoute roles={['employee', 'manager', 'hr']}>
-                      <ComingSoon title="My Leave Requests" />
                     </RoleRoute>
                   }
                 />
@@ -177,7 +210,6 @@ export default function App() {
 
                 {/* General / Shared Navigation Links (Unlocking in later chapters) */}
                 <Route path="attendance" element={<ComingSoon title="Attendance Overview" />} />
-                <Route path="leaves" element={<ComingSoon title="Leave Management" />} />
                 <Route path="trainings" element={<ComingSoon title="Training & Development" />} />
                 <Route path="announcements" element={<ComingSoon title="Announcements & Bulletins" />} />
               </Route>

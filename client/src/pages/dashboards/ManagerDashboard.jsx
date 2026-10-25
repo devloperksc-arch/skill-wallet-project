@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { employeeApi } from '../../api/employees.js';
+import { getPendingApprovals } from '../../api/leaves.js';
 import PageHeader from '../../components/PageHeader.jsx';
 import StatCard from '../../components/StatCard.jsx';
 import { useNavigate } from 'react-router';
@@ -10,14 +11,19 @@ export default function ManagerDashboard() {
   const navigate = useNavigate();
 
   const [teamCount, setTeamCount] = useState('—');
+  const [pendingCount, setPendingCount] = useState('—');
 
   useEffect(() => {
     let isMounted = true;
-    employeeApi.getTeam().then((res) => {
+    Promise.all([
+      employeeApi.getTeam().catch(() => ({ data: { data: [] } })),
+      getPendingApprovals().catch(() => ({ leaves: [] })),
+    ]).then(([teamRes, pendingRes]) => {
       if (isMounted) {
-        setTeamCount(res.data.data?.length ?? 0);
+        setTeamCount(teamRes.data.data?.length ?? 0);
+        setPendingCount(pendingRes.leaves?.length ?? 0);
       }
-    }).catch(() => {});
+    });
     return () => {
       isMounted = false;
     };
@@ -75,13 +81,13 @@ export default function ManagerDashboard() {
             trend="All present"
           />
         </div>
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-sm-6 col-xl-3" style={{ cursor: 'pointer' }} onClick={() => navigate('/leaves/approvals')}>
           <StatCard
             title="Pending Requests"
-            value="0"
+            value={pendingCount}
             icon="bi-hourglass-split"
             color="warning"
-            trend="Coming in Chapter 3"
+            trend="Awaiting your approval"
           />
         </div>
         <div className="col-12 col-sm-6 col-xl-3">

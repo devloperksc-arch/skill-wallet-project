@@ -3,6 +3,10 @@ import mongoose from 'mongoose';
 import { env } from '../config/env.js';
 import { Department } from '../models/department.model.js';
 import { User, generateEmployeeCode } from '../models/user.model.js';
+import { LeaveType } from '../models/leaveType.model.js';
+import { Holiday } from '../models/holiday.model.js';
+import { LeaveBalance } from '../models/leaveBalance.model.js';
+import { ensureBalances } from '../services/leave.service.js';
 import { ROLES } from '../config/constants.js';
 
 async function seed() {
@@ -200,6 +204,80 @@ async function seed() {
     await newUser.save();
     console.log(`  ✅  User: ${u.email} (${u.role}) [${code}]`);
   }
+
+  // ── Leave Types ──────────────────────────────────────────────
+  const currentYear = new Date().getFullYear();
+  const leaveTypesData = [
+    {
+      name: 'Casual Leave',
+      code: 'CASUAL',
+      annualQuota: 12,
+      isPaid: true,
+      isUnlimited: false,
+      isActive: true,
+      description: 'Casual leave for personal or urgent matters',
+    },
+    {
+      name: 'Sick Leave',
+      code: 'SICK',
+      annualQuota: 10,
+      isPaid: true,
+      isUnlimited: false,
+      isActive: true,
+      description: 'Leave for medical care and recovery',
+    },
+    {
+      name: 'Earned Leave',
+      code: 'EARNED',
+      annualQuota: 15,
+      isPaid: true,
+      isUnlimited: false,
+      isActive: true,
+      description: 'Annual paid vacation/earned leave',
+    },
+    {
+      name: 'Unpaid Leave',
+      code: 'UNPAID',
+      annualQuota: 0,
+      isPaid: false,
+      isUnlimited: true,
+      isActive: true,
+      description: 'Unpaid leave of absence',
+    },
+  ];
+
+  for (const lt of leaveTypesData) {
+    const doc = await LeaveType.findOneAndUpdate({ code: lt.code }, lt, {
+      upsert: true,
+      new: true,
+    });
+    console.log(`  ✅  Leave Type: ${doc.name} (${doc.code}) [quota: ${doc.annualQuota}]`);
+  }
+
+  // ── Holidays ──────────────────────────────────────────────────
+  const holidayData = [
+    { name: "New Year's Day", date: `${currentYear}-01-01` },
+    { name: 'Republic Day', date: `${currentYear}-01-26` },
+    { name: 'International Labor Day', date: `${currentYear}-05-01` },
+    { name: 'Independence Day', date: `${currentYear}-08-15` },
+    { name: 'Gandhi Jayanti', date: `${currentYear}-10-02` },
+    { name: 'Christmas Day', date: `${currentYear}-12-25` },
+  ];
+
+  for (const h of holidayData) {
+    const hol = await Holiday.findOneAndUpdate({ date: h.date }, h, {
+      upsert: true,
+      new: true,
+    });
+    console.log(`  ✅  Holiday: ${hol.name} on ${hol.date}`);
+  }
+
+  // ── Ensure Balances for all active users ────────────────────────
+  const allActiveUsers = await User.find({ status: 'active' });
+  for (const user of allActiveUsers) {
+    await ensureBalances(user._id, currentYear);
+  }
+  console.log(`  ✅  Initialized leave balances for ${allActiveUsers.length} users for ${currentYear}`);
 
   console.log('\n🎉  Seed complete!');
   await mongoose.disconnect();

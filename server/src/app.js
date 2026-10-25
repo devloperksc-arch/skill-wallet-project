@@ -9,6 +9,9 @@ import { getDBStatus } from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import departmentRoutes from './routes/department.routes.js';
 import employeeRoutes from './routes/employee.routes.js';
+import leaveTypeRoutes from './routes/leaveType.routes.js';
+import holidayRoutes from './routes/holiday.routes.js';
+import leaveRoutes from './routes/leave.routes.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/error.js';
 
@@ -65,6 +68,9 @@ export function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/departments', departmentRoutes);
   app.use('/api/employees', employeeRoutes);
+  app.use('/api/leave-types', leaveTypeRoutes);
+  app.use('/api/holidays', holidayRoutes);
+  app.use('/api/leaves', leaveRoutes);
 
   // 404 + error handler
   app.use(notFound);

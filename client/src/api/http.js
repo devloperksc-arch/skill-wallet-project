@@ -76,4 +76,5 @@ http.interceptors.response.use(
   }
 );
 
+export { http };
 export default http;
