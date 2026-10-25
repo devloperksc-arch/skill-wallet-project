@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { employeeApi } from '../../api/employees.js';
 import PageHeader from '../../components/PageHeader.jsx';
 import StatCard from '../../components/StatCard.jsx';
 import { useNavigate } from 'react-router';
@@ -6,6 +8,20 @@ import { useNavigate } from 'react-router';
 export default function ManagerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const [teamCount, setTeamCount] = useState('—');
+
+  useEffect(() => {
+    let isMounted = true;
+    employeeApi.getTeam().then((res) => {
+      if (isMounted) {
+        setTeamCount(res.data.data?.length ?? 0);
+      }
+    }).catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div>
@@ -44,10 +60,10 @@ export default function ManagerDashboard() {
         <div className="col-12 col-sm-6 col-xl-3">
           <StatCard
             title="Direct Reports"
-            value="2"
+            value={teamCount}
             icon="bi-people-fill"
             color="primary"
-            trend="Employee 1 & 2"
+            trend="Active team members"
           />
         </div>
         <div className="col-12 col-sm-6 col-xl-3">

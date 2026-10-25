@@ -7,6 +7,8 @@ import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
 import { getDBStatus } from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
+import departmentRoutes from './routes/department.routes.js';
+import employeeRoutes from './routes/employee.routes.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/error.js';
 
@@ -61,6 +63,8 @@ export function createApp() {
 
   // API Routes
   app.use('/api/auth', authRoutes);
+  app.use('/api/departments', departmentRoutes);
+  app.use('/api/employees', employeeRoutes);
 
   // 404 + error handler
   app.use(notFound);

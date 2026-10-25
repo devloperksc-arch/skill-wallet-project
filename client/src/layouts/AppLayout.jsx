@@ -10,6 +10,7 @@ const NAV_ITEMS = {
     { label: 'Dashboard', path: '/hr', icon: 'bi-grid-1x2' },
     { label: 'Employees', path: '/employees', icon: 'bi-people' },
     { label: 'Departments', path: '/departments', icon: 'bi-building' },
+    { label: 'Directory', path: '/directory', icon: 'bi-person-lines-fill' },
     { label: 'Attendance', path: '/attendance', icon: 'bi-clock-history' },
     { label: 'Leave Requests', path: '/leaves', icon: 'bi-calendar-check' },
     { label: 'Training', path: '/trainings', icon: 'bi-mortarboard' },
@@ -19,6 +20,7 @@ const NAV_ITEMS = {
   manager: [
     { label: 'Dashboard', path: '/manager', icon: 'bi-grid-1x2' },
     { label: 'My Team', path: '/team', icon: 'bi-people' },
+    { label: 'Directory', path: '/directory', icon: 'bi-person-lines-fill' },
     { label: 'Team Attendance', path: '/attendance/team', icon: 'bi-clock-history' },
     { label: 'Team Leaves', path: '/leaves/team', icon: 'bi-calendar-check' },
     { label: 'Training', path: '/trainings', icon: 'bi-mortarboard' },
@@ -27,6 +29,7 @@ const NAV_ITEMS = {
   ],
   employee: [
     { label: 'Dashboard', path: '/employee', icon: 'bi-grid-1x2' },
+    { label: 'Directory', path: '/directory', icon: 'bi-person-lines-fill' },
     { label: 'My Leaves', path: '/leaves/my', icon: 'bi-calendar-check' },
     { label: 'My Attendance', path: '/attendance/my', icon: 'bi-clock-history' },
     { label: 'Announcements', path: '/announcements', icon: 'bi-megaphone' },

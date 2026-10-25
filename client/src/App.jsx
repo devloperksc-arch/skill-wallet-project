@@ -18,6 +18,14 @@ import HrDashboard from './pages/dashboards/HrDashboard.jsx';
 import ManagerDashboard from './pages/dashboards/ManagerDashboard.jsx';
 import EmployeeDashboard from './pages/dashboards/EmployeeDashboard.jsx';
 
+// Chapter 2 Pages
+import Employees from './pages/hr/Employees.jsx';
+import EmployeeDetail from './pages/hr/EmployeeDetail.jsx';
+import Departments from './pages/hr/Departments.jsx';
+import MyTeam from './pages/manager/MyTeam.jsx';
+import Directory from './pages/Directory.jsx';
+import MyProfile from './pages/MyProfile.jsx';
+
 function RootRedirect() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -61,6 +69,10 @@ export default function App() {
                 {/* Root Redirect based on role */}
                 <Route index element={<RootRedirect />} />
 
+                {/* Common/Shared Routes across all roles */}
+                <Route path="directory" element={<Directory />} />
+                <Route path="profile" element={<MyProfile />} />
+
                 {/* HR Restricted Routes */}
                 <Route
                   path="hr"
@@ -74,7 +86,15 @@ export default function App() {
                   path="employees"
                   element={
                     <RoleRoute roles={['hr']}>
-                      <ComingSoon title="Employee Management" />
+                      <Employees />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="employees/:id"
+                  element={
+                    <RoleRoute roles={['hr', 'manager', 'employee']}>
+                      <EmployeeDetail />
                     </RoleRoute>
                   }
                 />
@@ -82,7 +102,7 @@ export default function App() {
                   path="departments"
                   element={
                     <RoleRoute roles={['hr']}>
-                      <ComingSoon title="Department Management" />
+                      <Departments />
                     </RoleRoute>
                   }
                 />
@@ -100,7 +120,7 @@ export default function App() {
                   path="team"
                   element={
                     <RoleRoute roles={['manager', 'hr']}>
-                      <ComingSoon title="My Team Directory" />
+                      <MyTeam />
                     </RoleRoute>
                   }
                 />
@@ -155,12 +175,11 @@ export default function App() {
                   }
                 />
 
-                {/* General / Shared Navigation Links */}
+                {/* General / Shared Navigation Links (Unlocking in later chapters) */}
                 <Route path="attendance" element={<ComingSoon title="Attendance Overview" />} />
                 <Route path="leaves" element={<ComingSoon title="Leave Management" />} />
                 <Route path="trainings" element={<ComingSoon title="Training & Development" />} />
                 <Route path="announcements" element={<ComingSoon title="Announcements & Bulletins" />} />
-                <Route path="profile" element={<ComingSoon title="My Profile" />} />
               </Route>
 
               {/* Status and Fallback Routes */}

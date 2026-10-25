@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { employeeApi } from '../../api/employees.js';
+import { departmentApi } from '../../api/departments.js';
 import PageHeader from '../../components/PageHeader.jsx';
 import StatCard from '../../components/StatCard.jsx';
 import { useNavigate } from 'react-router';
@@ -6,6 +9,41 @@ import { useNavigate } from 'react-router';
 export default function HrDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const [metrics, setMetrics] = useState({
+    totalEmployees: '—',
+    activeEmployees: '—',
+    totalDepartments: '—',
+    loading: true,
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadMetrics() {
+      try {
+        const [empRes, deptRes] = await Promise.all([
+          employeeApi.list({ limit: 1 }),
+          departmentApi.list(),
+        ]);
+        if (isMounted) {
+          setMetrics({
+            totalEmployees: empRes.data.pagination?.total ?? '—',
+            activeEmployees: empRes.data.pagination?.total ?? '—',
+            totalDepartments: deptRes.data.data?.length ?? '—',
+            loading: false,
+          });
+        }
+      } catch (err) {
+        if (isMounted) {
+          setMetrics((prev) => ({ ...prev, loading: false }));
+        }
+      }
+    }
+    loadMetrics();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div>
@@ -44,19 +82,19 @@ export default function HrDashboard() {
         <div className="col-12 col-sm-6 col-xl-3">
           <StatCard
             title="Total Employees"
-            value="6"
+            value={metrics.totalEmployees}
             icon="bi-people-fill"
             color="primary"
-            trend="Active in system"
+            trend="Workforce directory"
           />
         </div>
         <div className="col-12 col-sm-6 col-xl-3">
           <StatCard
             title="Departments"
-            value="4"
+            value={metrics.totalDepartments}
             icon="bi-building"
             color="success"
-            trend="HR, Eng, Sales, Fin"
+            trend="Active divisions"
           />
         </div>
         <div className="col-12 col-sm-6 col-xl-3">

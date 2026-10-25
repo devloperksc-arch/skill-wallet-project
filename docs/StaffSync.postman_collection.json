@@ -57,6 +57,170 @@
           "request": { "method": "POST", "url": "{{base}}/auth/logout" }
         }
       ]
+    },
+    {
+      "name": "Departments",
+      "item": [
+        {
+          "name": "List Departments",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/departments",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Department",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/departments/{{deptId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Create Department",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/departments",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Marketing\",\"code\":\"MKT\",\"description\":\"Marketing and branding department\"}"
+            }
+          }
+        },
+        {
+          "name": "Update Department",
+          "request": {
+            "method": "PUT",
+            "url": "{{base}}/departments/{{deptId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"description\":\"Updated description\"}"
+            }
+          }
+        },
+        {
+          "name": "Delete Department",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base}}/departments/{{deptId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "List Employees (Paginated / Filtered)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/employees?page=1&limit=10&status=active",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Colleague Directory (All Roles)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/employees/directory",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "My Team (Manager)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/employees/team",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Employee Details",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/employees/{{empId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Create Employee (HR)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/employees",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Alex Morgan\",\"email\":\"alex@staffsync.test\",\"role\":\"employee\",\"department\":\"{{deptId}}\",\"designation\":\"Analyst\"}"
+            }
+          }
+        },
+        {
+          "name": "Update Employee (HR)",
+          "request": {
+            "method": "PUT",
+            "url": "{{base}}/employees/{{empId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"designation\":\"Senior Analyst\"}"
+            }
+          }
+        },
+        {
+          "name": "Update Self Profile (All Roles)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base}}/employees/me",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\":\"555-0199\",\"address\":\"42 Enterprise Way\"}"
+            }
+          }
+        },
+        {
+          "name": "Update Employee Status (HR)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base}}/employees/{{empId}}/status",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"inactive\"}"
+            }
+          }
+        },
+        {
+          "name": "Reset Employee Password (HR)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/employees/{{empId}}/reset-password",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
     }
   ]
 }

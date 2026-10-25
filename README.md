@@ -61,14 +61,23 @@ npm run dev
 | `npm run build` | Build the client for production |
 | `npm start` | Start the production server |
 
-## What Works (Chapter 1)
-- ✅ Full-stack project scaffold (MERN)
-- ✅ JWT authentication (access + refresh tokens)
-- ✅ Role-based authorization (HR / Manager / Employee)
-- ✅ Login, Logout, Refresh, Change Password endpoints
-- ✅ Role-specific dashboard shells with sidebar navigation
-- ✅ Seed script with 6 test users across 4 departments
-- ✅ Automated tests (auth suite)
+## What Works (Chapters 1 & 2)
+- ✅ **Chapter 1 — Foundation, Authentication & Role-Based Shell**
+  - JWT authentication (in-memory access token + httpOnly refresh cookie rotation)
+  - Role-based authorization (`hr`, `manager`, `employee`)
+  - Login, Logout, Refresh, Change Password endpoints
+  - Responsive shell layout with desktop sidebar, mobile offcanvas drawer, and topbar user menu
+  - 15 automated auth tests (100% pass)
+- ✅ **Chapter 2 — Employee & Department Management**
+  - Full Department CRUD with conflict detection and employee-check deletion protection
+  - Workforce Employee directory with server pagination, sorting, and regex search
+  - Manager-scoped team directory (isolated direct reports)
+  - Public Colleague Directory accessible by all authenticated roles
+  - HR employee creation with secure one-time temporary password generation & copy modal
+  - Self-service personal profile editor (`PATCH /api/employees/me`) with strict schema validation
+  - Employee status toggle (active/inactive) with session invalidation (`tokenVersion` increment)
+  - Protection guards: HR cannot demote/deactivate self; cannot deactivate last HR administrator
+  - 19 automated employee & department tests (100% pass, total 34 tests)
 
 ## API
 See `docs/StaffSync.postman_collection.json` for the Postman collection.
