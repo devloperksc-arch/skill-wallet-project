@@ -91,6 +91,22 @@ npm run dev
   - Annual leave balances tracking (allocated, used, pending, available) with HR quota adjustment guard
   - CSS Grid interactive Leave & Holiday Calendar with monthly navigation and role scoping
   - 22 automated leave management tests (100% pass, total 56 tests across suite)
+- ✅ **Chapter 4 — Attendance & Announcements/News**
+  - Attendance State Machine: Daily check-in and check-out tracking with server clock authority
+  - Company Timezone Date Alignment: Timestamps converted to `YYYY-MM-DD` using company timezone (`Asia/Kolkata`)
+  - Automated Late Detection: Evaluates arrival against `WORK_START + LATE_GRACE_MINUTES` (09:45)
+  - Work Duration & Status Thresholds: >= 8h present, >= 4h half-day, otherwise absent with insufficient hours note
+  - Leave Blocking: Prevents daily check-in if user has an approved leave on that date
+  - Weekend / Non-working Day Flagging: Check-in permitted but marked as non-working day
+  - Real-time Dashboard Clock Widget: Live sync clock, live elapsed timer, dynamic check-in/out buttons
+  - My Attendance: Monthly calendar breakdown, derived day statuses, KPI counters (present, late, half-day, absent, leaves, total hours)
+  - Manager Team Attendance: Daily team status overview with real-time quick filters (all, present, late, on leave, not checked in)
+  - HR Attendance Management: Daily logs with pagination & filtering, monthly aggregation table, and Excel-safe CSV export (with formula-injection escaping for `= + - @`)
+  - Attendance Corrections & Audit Trail: HR manual corrections and missing day creation with mandatory reason and history logs
+  - Announcements Engine: Role-based audience filtering (`all`, `employee`, `manager`, `hr`), priority tags, and pin-to-top sorting
+  - Scheduled & Expiring Announcements: Automated visibility filtering (`publishAt <= now` and `expiresAt > now`), HR manage table for scheduled/live/expired states
+  - XSS-Safe Text Rendering: Script injection tags (`<script>`, `<iframe>`) safely displayed as harmless plain text
+  - 15 automated attendance and announcement tests (100% pass, total 71 tests across suite)
 
 ## API
 See `docs/StaffSync.postman_collection.json` for the Postman collection.

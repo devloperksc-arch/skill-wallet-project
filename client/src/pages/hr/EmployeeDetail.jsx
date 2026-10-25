@@ -12,6 +12,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import Tabs from 'react-bootstrap/Tabs';
 import Tab from 'react-bootstrap/Tab';
 import { getUserBalances } from '../../api/leaves.js';
+import { getAllAttendance } from '../../api/attendance.js';
 import AdjustBalanceModal from '../../components/leaves/AdjustBalanceModal.jsx';
 
 export default function EmployeeDetail() {
@@ -36,6 +37,9 @@ export default function EmployeeDetail() {
   const [leaveBalances, setLeaveBalances] = useState([]);
   const [leavesLoading, setLeavesLoading] = useState(false);
   const [balanceToAdjust, setBalanceToAdjust] = useState(null);
+
+  const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
 
   const fetchEmployee = useCallback(async () => {
     try {
@@ -62,6 +66,18 @@ export default function EmployeeDetail() {
     }
   }, [id]);
 
+  const fetchAttendanceLogs = useCallback(async () => {
+    try {
+      setAttendanceLoading(true);
+      const res = await getAllAttendance({ userId: id, limit: 31 });
+      setAttendanceLogs(res.attendance || []);
+    } catch (err) {
+      console.error('Failed to load attendance logs for employee', err);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchEmployee();
   }, [fetchEmployee]);
@@ -69,8 +85,10 @@ export default function EmployeeDetail() {
   useEffect(() => {
     if (activeTab === 'leaves') {
       fetchLeaveBalances();
+    } else if (activeTab === 'attendance') {
+      fetchAttendanceLogs();
     }
-  }, [activeTab, fetchLeaveBalances]);
+  }, [activeTab, fetchLeaveBalances, fetchAttendanceLogs]);
 
   const handleToggleStatus = async () => {
     if (!employee) return;
@@ -339,11 +357,93 @@ export default function EmployeeDetail() {
             </div>
           </Tab>
 
-          <Tab eventKey="attendance" title="Attendance (Ch. 4)">
-            <div className="text-center py-5 text-muted">
-              <i className="bi bi-clock-history fs-1 mb-2 d-block opacity-50"></i>
-              <h6 className="fw-bold">Attendance Records</h6>
-              <p className="small mb-0">Daily check-in and check-out tracking will unlock in Chapter 4.</p>
+          <Tab eventKey="attendance" title="Attendance">
+            <div className="pt-2">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h6 className="fw-bold text-dark mb-0">Recent Attendance Logs</h6>
+                <button className="btn btn-outline-secondary btn-sm" onClick={fetchAttendanceLogs}>
+                  <i className="bi bi-arrow-clockwise me-1"></i> Refresh
+                </button>
+              </div>
+
+              {attendanceLoading ? (
+                <div className="text-center py-5 text-muted">
+                  <Spinner animation="border" size="sm" variant="primary" />
+                  <span className="ms-2">Loading attendance records...</span>
+                </div>
+              ) : attendanceLogs.length === 0 ? (
+                <div className="text-center py-5 text-muted border rounded-3 bg-light-subtle">
+                  <i className="bi bi-clock-history fs-2 mb-2 d-block opacity-50"></i>
+                  No attendance records recorded for this employee yet.
+                </div>
+              ) : (
+                <div className="table-responsive border rounded-3">
+                  <table className="table table-hover align-middle mb-0">
+                    <thead className="table-light small text-uppercase">
+                      <tr>
+                        <th className="ps-3">Date</th>
+                        <th>Status</th>
+                        <th>Check In</th>
+                        <th>Check Out</th>
+                        <th>Worked Time</th>
+                        <th className="pe-3">Audit / Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {attendanceLogs.map((log) => (
+                        <tr key={log._id}>
+                          <td className="ps-3 fw-semibold text-dark">{log.date}</td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                log.status === 'present'
+                                  ? 'bg-success-subtle text-success border border-success-subtle'
+                                  : log.status === 'half-day'
+                                  ? 'bg-info-subtle text-info border border-info-subtle'
+                                  : 'bg-danger-subtle text-danger border border-danger-subtle'
+                              }`}
+                            >
+                              {log.status}
+                            </span>
+                          </td>
+                          <td>
+                            {log.checkIn ? (
+                              <div className="d-flex align-items-center gap-1">
+                                <span>{new Date(log.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                {log.isLate && (
+                                  <span className="badge bg-warning-subtle text-warning border border-warning-subtle small px-1">
+                                    Late
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td>
+                            {log.checkOut
+                              ? new Date(log.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : <span className="badge bg-secondary-subtle text-secondary small">Missing Check-out</span>}
+                          </td>
+                          <td>
+                            {log.workedMinutes != null
+                              ? `${Math.floor(log.workedMinutes / 60)}h ${log.workedMinutes % 60}m`
+                              : '—'}
+                          </td>
+                          <td className="pe-3 small text-secondary">
+                            {log.note && <span>{log.note}</span>}
+                            {log.correctedBy && (
+                              <span className="badge bg-info-subtle text-info small ms-1">
+                                HR Corrected
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </Tab>
 

@@ -33,6 +33,13 @@ import LeaveApprovals from './pages/manager/LeaveApprovals.jsx';
 import LeaveRequests from './pages/hr/LeaveRequests.jsx';
 import LeaveSettings from './pages/hr/LeaveSettings.jsx';
 
+// Chapter 4 Pages
+import MyAttendance from './pages/attendance/MyAttendance.jsx';
+import TeamAttendance from './pages/manager/TeamAttendance.jsx';
+import AttendanceManagement from './pages/hr/AttendanceManagement.jsx';
+import AnnouncementsFeed from './pages/announcements/AnnouncementsFeed.jsx';
+import ManageAnnouncements from './pages/hr/ManageAnnouncements.jsx';
+
 function RootRedirect() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -81,6 +88,8 @@ export default function App() {
                 <Route path="profile" element={<MyProfile />} />
                 <Route path="leaves/my" element={<MyLeaves />} />
                 <Route path="leaves/calendar" element={<LeaveCalendar />} />
+                <Route path="attendance/my" element={<MyAttendance />} />
+                <Route path="announcements" element={<AnnouncementsFeed />} />
 
                 {/* HR Restricted Routes */}
                 <Route
@@ -139,6 +148,22 @@ export default function App() {
                     </RoleRoute>
                   }
                 />
+                <Route
+                  path="attendance"
+                  element={
+                    <RoleRoute roles={['hr']}>
+                      <AttendanceManagement />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="announcements/manage"
+                  element={
+                    <RoleRoute roles={['hr']}>
+                      <ManageAnnouncements />
+                    </RoleRoute>
+                  }
+                />
 
                 {/* Manager Routes */}
                 <Route
@@ -177,7 +202,7 @@ export default function App() {
                   path="attendance/team"
                   element={
                     <RoleRoute roles={['manager', 'hr']}>
-                      <ComingSoon title="Team Attendance" />
+                      <TeamAttendance />
                     </RoleRoute>
                   }
                 />
@@ -192,14 +217,6 @@ export default function App() {
                   }
                 />
                 <Route
-                  path="attendance/my"
-                  element={
-                    <RoleRoute roles={['employee', 'manager', 'hr']}>
-                      <ComingSoon title="My Daily Attendance" />
-                    </RoleRoute>
-                  }
-                />
-                <Route
                   path="trainings/my"
                   element={
                     <RoleRoute roles={['employee', 'manager', 'hr']}>
@@ -208,10 +225,8 @@ export default function App() {
                   }
                 />
 
-                {/* General / Shared Navigation Links (Unlocking in later chapters) */}
-                <Route path="attendance" element={<ComingSoon title="Attendance Overview" />} />
+                {/* General / Shared Navigation Links (Unlocking in Chapter 5) */}
                 <Route path="trainings" element={<ComingSoon title="Training & Development" />} />
-                <Route path="announcements" element={<ComingSoon title="Announcements & Bulletins" />} />
               </Route>
 
               {/* Status and Fallback Routes */}

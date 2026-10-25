@@ -12,6 +12,8 @@ import employeeRoutes from './routes/employee.routes.js';
 import leaveTypeRoutes from './routes/leaveType.routes.js';
 import holidayRoutes from './routes/holiday.routes.js';
 import leaveRoutes from './routes/leave.routes.js';
+import attendanceRoutes from './routes/attendance.routes.js';
+import announcementRoutes from './routes/announcement.routes.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/error.js';
 
@@ -71,6 +73,8 @@ export function createApp() {
   app.use('/api/leave-types', leaveTypeRoutes);
   app.use('/api/holidays', holidayRoutes);
   app.use('/api/leaves', leaveRoutes);
+  app.use('/api/attendance', attendanceRoutes);
+  app.use('/api/announcements', announcementRoutes);
 
   // 404 + error handler
   app.use(notFound);

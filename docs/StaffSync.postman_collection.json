@@ -445,6 +445,196 @@
           }
         }
       ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        {
+          "name": "Check In",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/attendance/check-in",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Check Out",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/attendance/check-out",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Today's Status",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/attendance/today",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "My Monthly Attendance",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/attendance/my?month=2026-10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Team Daily Attendance (Manager)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/attendance/team?date=2026-10-26",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Team Monthly Summary (Manager)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/attendance/team/summary?month=2026-10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "All Attendance Logs (HR)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/attendance?date=&department=&status=&page=1&limit=20",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Company Monthly Summary (HR)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/attendance/summary?month=2026-10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Export Attendance CSV (HR)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/attendance/export.csv?month=2026-10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Correct Attendance Record (HR)",
+          "request": {
+            "method": "PUT",
+            "url": "{{base}}/attendance/{{attendanceId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"checkIn\":\"2026-10-26T09:30:00.000Z\",\"checkOut\":\"2026-10-26T18:00:00.000Z\",\"status\":\"present\",\"correctionReason\":\"Employee forgot to punch out\"}"
+            }
+          }
+        },
+        {
+          "name": "Log Missing Attendance Day (HR)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/attendance/correct",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"userId\":\"{{userId}}\",\"date\":\"2026-10-25\",\"checkIn\":\"2026-10-25T09:30:00.000Z\",\"checkOut\":\"2026-10-25T18:00:00.000Z\",\"status\":\"present\",\"correctionReason\":\"System outage punch insertion\"}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Announcements",
+      "item": [
+        {
+          "name": "Get Visible Announcements",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/announcements?category=&q=&page=1&limit=10",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Latest Announcements (Dashboards)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/announcements/latest?limit=5",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Get Announcement By ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/announcements/{{announcementId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Manage Announcements (HR)",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/announcements/manage?status=live&page=1&limit=15",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Create Announcement (HR)",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/announcements",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Annual Offsite 2026\",\"body\":\"The annual company offsite will take place in Goa.\",\"category\":\"event\",\"priority\":\"high\",\"audience\":[\"all\"],\"isPinned\":true}"
+            }
+          }
+        },
+        {
+          "name": "Update Announcement (HR)",
+          "request": {
+            "method": "PUT",
+            "url": "{{base}}/announcements/{{announcementId}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Annual Offsite 2026 Updated\",\"body\":\"Dates confirmed: November 15-18.\",\"category\":\"event\",\"priority\":\"high\",\"audience\":[\"all\"],\"isPinned\":true}"
+            }
+          }
+        },
+        {
+          "name": "Toggle Pin Status (HR)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base}}/announcements/{{announcementId}}/pin",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Delete Announcement (HR)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base}}/announcements/{{announcementId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
     }
   ]
 }
