@@ -1,0 +1,62 @@
+{
+  "info": {
+    "name": "StaffSync API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base", "value": "http://localhost:5000/api" },
+    { "key": "accessToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{base}}/health"
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if(r.accessToken) pm.collectionVariables.set('accessToken', r.accessToken);"] } }],
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"hr@staffsync.test\",\"password\":\"Passw0rd!23\"}" }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "url": "{{base}}/auth/me",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "Refresh",
+          "request": { "method": "POST", "url": "{{base}}/auth/refresh" }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "url": "{{base}}/auth/change-password",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"currentPassword\":\"Passw0rd!23\",\"newPassword\":\"NewPass1!\"}" }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": { "method": "POST", "url": "{{base}}/auth/logout" }
+        }
+      ]
+    }
+  ]
+}

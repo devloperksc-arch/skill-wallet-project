@@ -1,0 +1,33 @@
+{
+  "name": "staffsync-server",
+  "version": "1.0.0",
+  "description": "StaffSync backend — Express 5 + Mongoose 9",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dayjs": "^1.11.13",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^9.9.5",
+    "morgan": "^1.10.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.4",
+    "mongodb-memory-server": "^10.1.4",
+    "supertest": "^7.1.0",
+    "vitest": "^3.2.4"
+  }
+}
