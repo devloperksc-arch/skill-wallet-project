@@ -9,8 +9,10 @@ import { LeaveBalance } from '../models/leaveBalance.model.js';
 import { ensureBalances } from '../services/leave.service.js';
 import { ROLES } from '../config/constants.js';
 
-async function seed() {
-  await mongoose.connect(env.MONGODB_URI);
+export async function runSeed({ disconnect = true } = {}) {
+  if (mongoose.connection.readyState !== 1) {
+    await mongoose.connect(env.MONGODB_URI);
+  }
   console.log('🌱  Seeding StaffSync…');
 
   // ── Departments ──────────────────────────────────────────────
@@ -25,7 +27,7 @@ async function seed() {
   for (const d of deptData) {
     const dept = await Department.findOneAndUpdate({ code: d.code }, d, {
       upsert: true,
-      new: true,
+      returnDocument: 'after',
     });
     depts[d.code] = dept;
     console.log(`  ✅  Department: ${dept.name}`);
@@ -249,7 +251,7 @@ async function seed() {
   for (const lt of leaveTypesData) {
     const doc = await LeaveType.findOneAndUpdate({ code: lt.code }, lt, {
       upsert: true,
-      new: true,
+      returnDocument: 'after',
     });
     console.log(`  ✅  Leave Type: ${doc.name} (${doc.code}) [quota: ${doc.annualQuota}]`);
   }
@@ -267,7 +269,7 @@ async function seed() {
   for (const h of holidayData) {
     const hol = await Holiday.findOneAndUpdate({ date: h.date }, h, {
       upsert: true,
-      new: true,
+      returnDocument: 'after',
     });
     console.log(`  ✅  Holiday: ${hol.name} on ${hol.date}`);
   }
@@ -280,10 +282,20 @@ async function seed() {
   console.log(`  ✅  Initialized leave balances for ${allActiveUsers.length} users for ${currentYear}`);
 
   console.log('\n🎉  Seed complete!');
-  await mongoose.disconnect();
+  if (disconnect) {
+    await mongoose.disconnect();
+  }
 }
 
-seed().catch((err) => {
-  console.error('❌  Seed failed:', err.message);
-  process.exit(1);
-});
+const isMainModule = process.argv[1] && (
+  import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/')) ||
+  process.argv[1].endsWith('seed.js')
+);
+
+if (isMainModule) {
+  runSeed().catch((err) => {
+    console.error('❌  Seed failed:', err.message);
+    process.exit(1);
+  });
+}
+

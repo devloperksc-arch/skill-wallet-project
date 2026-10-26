@@ -375,7 +375,7 @@ export async function decideLeave(req, res, next) {
         decidedAt: new Date(),
         decisionNote: note || '',
       },
-      { new: true }
+      { returnDocument: 'after' }
     )
       .populate('user', 'name email employeeCode')
       .populate('leaveType');

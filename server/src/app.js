@@ -28,7 +28,20 @@ export function createApp() {
   const app = express();
 
   // Security
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+          imgSrc: ["'self'", 'data:', 'blob:'],
+          connectSrc: ["'self'", env.CLIENT_ORIGIN],
+        },
+      },
+    })
+  );
   app.use(
     cors({
       origin: env.CLIENT_ORIGIN,

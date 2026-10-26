@@ -41,7 +41,10 @@ describe('Chapter 5: Training & Development, Dashboards & Hardening', () => {
   });
 
   beforeEach(async () => {
-    await mongoose.connection.dropDatabase();
+    const collections = mongoose.connection.collections;
+    for (const key in collections) {
+      await collections[key].deleteMany({});
+    }
 
     // Create Departments
     engineeringDept = await Department.create({

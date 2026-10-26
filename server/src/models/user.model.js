@@ -65,7 +65,8 @@ userSchema.index({ name: 'text', email: 'text', employeeCode: 'text' });
 // Hash password on save when modified
 userSchema.pre('save', async function () {
   if (!this.isModified('passwordHash')) return;
-  this.passwordHash = await bcrypt.hash(this.passwordHash, 12);
+  const rounds = process.env.NODE_ENV === 'test' ? 4 : 12;
+  this.passwordHash = await bcrypt.hash(this.passwordHash, rounds);
 });
 
 // Instance method to compare passwords

@@ -18,9 +18,8 @@ export default function Login() {
 
   const from = location.state?.from?.pathname || '/';
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!email || !password) {
+  const executeLogin = async (loginEmail, loginPassword) => {
+    if (!loginEmail || !loginPassword) {
       setError('Please enter both email and password.');
       return;
     }
@@ -29,7 +28,7 @@ export default function Login() {
     setSubmitting(true);
 
     try {
-      const user = await login(email, password);
+      const user = await login(loginEmail, loginPassword);
       showToast(`Welcome back, ${user.name}!`, 'success');
 
       if (user.mustChangePassword) {
@@ -52,10 +51,15 @@ export default function Login() {
     }
   };
 
-  const handleQuickLogin = (demoEmail, demoPassword) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await executeLogin(email, password);
+  };
+
+  const handleQuickLogin = async (demoEmail, demoPassword) => {
     setEmail(demoEmail);
     setPassword(demoPassword);
-    setError('');
+    await executeLogin(demoEmail, demoPassword);
   };
 
   return (
@@ -128,35 +132,43 @@ export default function Login() {
         </button>
       </form>
 
-      {/* Quick Demo Credentials for Reviewers */}
+      {/* 1-Click Quick Demo Login */}
       <div className="mt-4 pt-3 border-top">
-        <p className="text-muted small fw-semibold mb-2" style={{ fontSize: '0.75rem' }}>
-          DEMO ACCOUNTS (PASSWORD: StaffSync@2026)
-        </p>
-        <div className="d-flex flex-wrap gap-1">
+        <div className="d-flex align-items-center justify-content-between mb-2">
+          <span className="text-muted small fw-semibold" style={{ fontSize: '0.75rem' }}>
+            ⚡ 1-CLICK INSTANT DEMO LOGIN:
+          </span>
+          <span className="badge bg-light text-secondary border" style={{ fontSize: '0.7rem' }}>
+            Passw0rd!23
+          </span>
+        </div>
+        <div className="d-flex flex-wrap gap-2">
           <button
             type="button"
-            className="btn btn-outline-secondary btn-sm py-1 px-2 rounded-2"
-            style={{ fontSize: '0.72rem' }}
-            onClick={() => handleQuickLogin('hr@staffsync.test', 'StaffSync@2026')}
+            className="btn btn-outline-primary btn-sm py-2 px-2 rounded-2 fw-medium flex-fill d-flex align-items-center justify-content-center gap-1 shadow-sm"
+            style={{ fontSize: '0.8rem' }}
+            disabled={submitting}
+            onClick={() => handleQuickLogin('hr@staffsync.test', 'Passw0rd!23')}
           >
-            HR (Alice)
+            <i className="bi bi-shield-check text-primary"></i> HR Admin
           </button>
           <button
             type="button"
-            className="btn btn-outline-secondary btn-sm py-1 px-2 rounded-2"
-            style={{ fontSize: '0.72rem' }}
-            onClick={() => handleQuickLogin('manager@staffsync.test', 'StaffSync@2026')}
+            className="btn btn-outline-info btn-sm py-2 px-2 rounded-2 fw-medium flex-fill d-flex align-items-center justify-content-center gap-1 shadow-sm"
+            style={{ fontSize: '0.8rem' }}
+            disabled={submitting}
+            onClick={() => handleQuickLogin('manager@staffsync.test', 'Passw0rd!23')}
           >
-            Manager (Carol)
+            <i className="bi bi-briefcase text-info"></i> Manager
           </button>
           <button
             type="button"
-            className="btn btn-outline-secondary btn-sm py-1 px-2 rounded-2"
-            style={{ fontSize: '0.72rem' }}
-            onClick={() => handleQuickLogin('employee1@staffsync.test', 'StaffSync@2026')}
+            className="btn btn-outline-secondary btn-sm py-2 px-2 rounded-2 fw-medium flex-fill d-flex align-items-center justify-content-center gap-1 shadow-sm"
+            style={{ fontSize: '0.8rem' }}
+            disabled={submitting}
+            onClick={() => handleQuickLogin('employee1@staffsync.test', 'Passw0rd!23')}
           >
-            Employee 1
+            <i className="bi bi-person text-secondary"></i> Employee
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { env } from './config/env.js';
-import { connectDB } from './config/db.js';
+import { connectDB, closeDB } from './config/db.js';
 import { createApp } from './app.js';
 
 async function main() {
@@ -15,6 +15,7 @@ async function main() {
   // Graceful shutdown
   const shutdown = async (signal) => {
     console.log(`\n${signal} received — shutting down gracefully…`);
+    await closeDB();
     server.close(() => {
       console.log('HTTP server closed');
       process.exit(0);
