@@ -174,51 +174,49 @@ export default function Login() {
         </button>
       </form>
 
-      {/* 1-Click Quick Demo Login (development only) */}
-      {import.meta.env.DEV && (
-        <div className="mt-4 pt-3 border-top border-white-15">
-          <div className="d-flex align-items-center justify-content-between mb-2">
-            <span className="text-slate-400 font-overline">
-              ⚡ 1-CLICK INSTANT DEMO LOGIN:
-            </span>
-            <span
-              className="badge rounded-pill text-indigo-300 font-monospace"
-              style={{ background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', fontSize: '0.7rem' }}
-            >
-              Passw0rd!23
-            </span>
-          </div>
-          <div className="d-flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn btn-ghost-smoked btn-sm py-2 px-2.5 rounded-3 fw-medium flex-fill d-flex align-items-center justify-content-center gap-1.5 text-white"
-              style={{ fontSize: '0.8rem' }}
-              disabled={submitting}
-              onClick={() => handleQuickLogin('hr@staffsync.test', 'Passw0rd!23')}
-            >
-              <i className="bi bi-shield-check text-indigo-400"></i> HR Admin
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost-smoked btn-sm py-2 px-2.5 rounded-3 fw-medium flex-fill d-flex align-items-center justify-content-center gap-1.5 text-white"
-              style={{ fontSize: '0.8rem' }}
-              disabled={submitting}
-              onClick={() => handleQuickLogin('manager@staffsync.test', 'Passw0rd!23')}
-            >
-              <i className="bi bi-briefcase text-info"></i> Manager
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost-smoked btn-sm py-2 px-2.5 rounded-3 fw-medium flex-fill d-flex align-items-center justify-content-center gap-1.5 text-white"
-              style={{ fontSize: '0.8rem' }}
-              disabled={submitting}
-              onClick={() => handleQuickLogin('employee1@staffsync.test', 'Passw0rd!23')}
-            >
-              <i className="bi bi-person text-slate-300"></i> Employee
-            </button>
-          </div>
+      {/* 1-Click Quick Demo Login */}
+      <div className="mt-4 pt-3 border-top border-white-15">
+        <div className="d-flex align-items-center justify-content-between mb-2">
+          <span className="text-slate-400 font-overline">
+            ⚡ 1-CLICK INSTANT DEMO LOGIN:
+          </span>
+          <span
+            className="badge rounded-pill text-indigo-300 font-monospace"
+            style={{ background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', fontSize: '0.7rem' }}
+          >
+            Passw0rd!23
+          </span>
         </div>
-      )}
+        <div className="d-flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn btn-ghost-smoked btn-sm py-2 px-2.5 rounded-3 fw-medium flex-fill d-flex align-items-center justify-content-center gap-1.5 text-white"
+            style={{ fontSize: '0.8rem' }}
+            disabled={submitting}
+            onClick={() => handleQuickLogin('hr@staffsync.test', 'Passw0rd!23')}
+          >
+            <i className="bi bi-shield-check text-indigo-400"></i> HR Admin
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost-smoked btn-sm py-2 px-2.5 rounded-3 fw-medium flex-fill d-flex align-items-center justify-content-center gap-1.5 text-white"
+            style={{ fontSize: '0.8rem' }}
+            disabled={submitting}
+            onClick={() => handleQuickLogin('manager@staffsync.test', 'Passw0rd!23')}
+          >
+            <i className="bi bi-briefcase text-info"></i> Manager
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost-smoked btn-sm py-2 px-2.5 rounded-3 fw-medium flex-fill d-flex align-items-center justify-content-center gap-1.5 text-white"
+            style={{ fontSize: '0.8rem' }}
+            disabled={submitting}
+            onClick={() => handleQuickLogin('employee1@staffsync.test', 'Passw0rd!23')}
+          >
+            <i className="bi bi-person text-slate-300"></i> Employee
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

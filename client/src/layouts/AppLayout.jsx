@@ -323,7 +323,6 @@ export default function AppLayout() {
                 <span className="text-white fw-bold">{role.toUpperCase()}</span>
                 <span className="badge rounded-pill bg-purple-subtle text-purple ms-1" style={{ fontSize: '9px' }}>Toggle</span>
               </button>
-
               <Dropdown align="end">
                 <Dropdown.Toggle
                   as="button"
