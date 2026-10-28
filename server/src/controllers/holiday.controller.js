@@ -19,7 +19,7 @@ export async function getHolidays(req, res, next) {
 
 export async function createHoliday(req, res, next) {
   try {
-    const { name, date } = req.body;
+    const { name, date } = req.validated;
     const existing = await Holiday.findOne({ date });
     if (existing) {
       throw ApiError.conflict(`A holiday already exists on ${date}`);
@@ -38,7 +38,7 @@ export async function createHoliday(req, res, next) {
 export async function updateHoliday(req, res, next) {
   try {
     const { id } = req.params;
-    const { name, date } = req.body;
+    const { name, date } = req.validated;
 
     const holiday = await Holiday.findById(id);
     if (!holiday) {

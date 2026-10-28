@@ -43,7 +43,7 @@ export async function getPrograms(user, query = {}) {
     if (endDate) filter.startDate.$lte = new Date(endDate);
   }
 
-  if (q && q.trim()) {
+  if (typeof q === 'string' && q.trim()) {
     const escaped = q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     filter.$or = [
       { title: { $regex: escaped, $options: 'i' } },
@@ -52,8 +52,8 @@ export async function getPrograms(user, query = {}) {
     ];
   }
 
-  const pageNum = Math.max(1, parseInt(page, 10));
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
   const skip = (pageNum - 1) * limitNum;
 
   const [programs, total] = await Promise.all([
@@ -145,7 +145,18 @@ export async function updateProgram(managerId, programId, data) {
     throw new ApiError(400, `Cannot edit program in '${program.status}' status. Only draft or scheduled programs can be edited.`);
   }
 
-  Object.assign(program, data);
+  // Whitelist: never let a request change ownership, status (use the status endpoint) or ids
+  const EDITABLE = ['title', 'description', 'type', 'mode', 'trainer', 'location', 'startDate', 'endDate', 'capacity', 'department'];
+  for (const key of EDITABLE) {
+    if (data[key] !== undefined) program[key] = data[key];
+  }
+  if (program.endDate < program.startDate) {
+    throw new ApiError(400, 'End date must be greater than or equal to start date');
+  }
+  const activeCount = await TrainingEnrollment.countDocuments({ program: programId, status: { $ne: 'dropped' } });
+  if (program.capacity < activeCount) {
+    throw new ApiError(409, `Capacity cannot be lower than current enrollments (${activeCount})`);
+  }
   await program.save();
   return program;
 }
@@ -228,6 +239,8 @@ export async function enrollEmployees(managerId, programId, userIds) {
     throw new ApiError(400, `Cannot enroll members in a '${program.status}' program`);
   }
 
+  userIds = [...new Set(userIds.map(String))];
+
   // 1. Verify all userIds are direct reports of managerId
   const directReports = await User.find({
     _id: { $in: userIds },
@@ -258,8 +271,18 @@ export async function enrollEmployees(managerId, programId, userIds) {
     user: { $in: userIds },
   });
 
-  if (existing.length > 0) {
+  const activeExisting = existing.filter((e) => e.status !== 'dropped');
+  if (activeExisting.length > 0) {
     throw new ApiError(409, 'One or more selected employees are already enrolled in this program');
+  }
+  // Re-enrolling someone who previously dropped: reactivate the existing record (unique index forbids a 2nd)
+  const droppedIds = existing.map((e) => String(e.user));
+  if (droppedIds.length) {
+    await TrainingEnrollment.updateMany(
+      { program: programId, user: { $in: droppedIds } },
+      { status: 'enrolled', progress: 0, completedAt: null, enrolledBy: managerId, enrolledAt: new Date() }
+    );
+    userIds = userIds.filter((u) => !droppedIds.includes(String(u)));
   }
 
   // 4. Create enrollments
@@ -271,8 +294,10 @@ export async function enrollEmployees(managerId, programId, userIds) {
     progress: 0,
   }));
 
-  const created = await TrainingEnrollment.insertMany(docs);
-  return created;
+  const created = docs.length ? await TrainingEnrollment.insertMany(docs) : [];
+  return created.concat(
+    droppedIds.length ? await TrainingEnrollment.find({ program: programId, user: { $in: droppedIds } }) : []
+  );
 }
 
 /**
@@ -375,7 +400,7 @@ export async function updateEnrollment(user, enrollmentId, data) {
         enrollment.completedAt = new Date();
       }
     }
-    if (data.status) {
+    if (data.status && data.status !== 'enrolled') {
       enrollment.status = data.status;
       if (data.status === 'completed' && !enrollment.completedAt) {
         enrollment.completedAt = new Date();

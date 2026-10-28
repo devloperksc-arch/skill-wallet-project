@@ -1,7 +1,10 @@
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { env } from '../config/env.js';
 import { User } from '../models/user.model.js';
 import { ApiError } from '../utils/ApiError.js';
+
+const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 10);
 
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -31,13 +34,12 @@ export async function login(req, res) {
   const user = await User.findOne({ email }).select('+passwordHash');
 
   if (!user || user.status === 'inactive') {
+    // Constant-time-ish: burn a bcrypt compare so response time doesn't reveal valid emails
+    await bcrypt.compare(password, DUMMY_HASH);
     throw ApiError.unauthorized(GENERIC_ERROR);
   }
 
-  let match = await user.comparePassword(password);
-  if (!match && env.NODE_ENV !== 'production' && (password === 'StaffSync@2026' || password === 'Passw0rd!23')) {
-    match = true;
-  }
+  const match = await user.comparePassword(password);
   if (!match) throw ApiError.unauthorized(GENERIC_ERROR);
 
   // Update last login
@@ -50,6 +52,8 @@ export async function login(req, res) {
 
   const userObj = user.toObject();
   delete userObj.passwordHash;
+  delete userObj.tokenVersion;
+  delete userObj.__v;
 
   res.json({
     success: true,

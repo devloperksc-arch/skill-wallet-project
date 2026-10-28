@@ -10,6 +10,12 @@ import { ensureBalances } from '../services/leave.service.js';
 import { ROLES } from '../config/constants.js';
 
 export async function runSeed({ disconnect = true } = {}) {
+  if (env.NODE_ENV === 'production' && !env.ALLOW_DEMO_SEED) {
+    throw new Error(
+      'Refusing to seed demo accounts in production (they share one well-known password). ' +
+        'Create your first HR admin manually, or set ALLOW_DEMO_SEED=true for a throw-away demo environment.'
+    );
+  }
   if (mongoose.connection.readyState !== 1) {
     await mongoose.connect(env.MONGODB_URI);
   }

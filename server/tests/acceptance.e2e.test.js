@@ -26,7 +26,7 @@ describe('StaffSync Full System Acceptance & E2E Demo Script (Section 5G)', () =
         sub: user._id.toString(),
         role: user.role,
         email: user.email,
-        tokenVersion: user.tokenVersion || 0,
+        tv: user.tokenVersion || 0,
       },
       env.JWT_ACCESS_SECRET,
       { expiresIn: '15m' }
@@ -316,7 +316,7 @@ describe('StaffSync Full System Acceptance & E2E Demo Script (Section 5G)', () =
     // 5.3 Employee updates progress and provides feedback
     const progressRes = await request(app)
       .patch(`/api/training/enrollments/${emp1Enrollment._id}`)
-      .set('Authorization', `Bearer ${signToken(employee1)}`)
+      .set('Authorization', `Bearer ${signToken(await User.findById(employee1._id))}`)
       .send({
         progress: 100,
         feedback: 'Super informative sessions!',

@@ -23,7 +23,7 @@ export default function AttendanceWidget({ onRefresh }) {
       const data = await getTodayStatus();
       setStatusData(data);
     } catch (err) {
-      console.error(err);
+      showToast(err.response?.data?.message || 'Could not load today\'s attendance status', 'danger');
     } finally {
       setLoading(false);
     }
@@ -135,9 +135,12 @@ export default function AttendanceWidget({ onRefresh }) {
           <div className="col-12 col-md-7">
             <div className="row g-3 mb-4 text-center">
               <div className="col-4">
-                <div className="card bg-light border-0 py-2">
-                  <span className="text-muted small">Check In</span>
-                  <span className="fw-bold text-dark fs-6 mt-1">
+                <div
+                  className="p-3 rounded-3 border h-100 d-flex flex-column justify-content-center"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.12)' }}
+                >
+                  <span className="text-slate-400 small font-overline">Check In</span>
+                  <span className="fw-bold text-white fs-5 mt-1 font-monospace">
                     {record?.checkIn
                       ? new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                       : '—'}
@@ -145,9 +148,12 @@ export default function AttendanceWidget({ onRefresh }) {
                 </div>
               </div>
               <div className="col-4">
-                <div className="card bg-light border-0 py-2">
-                  <span className="text-muted small">Check Out</span>
-                  <span className="fw-bold text-dark fs-6 mt-1">
+                <div
+                  className="p-3 rounded-3 border h-100 d-flex flex-column justify-content-center"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.12)' }}
+                >
+                  <span className="text-slate-400 small font-overline">Check Out</span>
+                  <span className="fw-bold text-white fs-5 mt-1 font-monospace">
                     {record?.checkOut
                       ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                       : '—'}
@@ -155,9 +161,12 @@ export default function AttendanceWidget({ onRefresh }) {
                 </div>
               </div>
               <div className="col-4">
-                <div className="card bg-light border-0 py-2">
-                  <span className="text-muted small">Worked Hours</span>
-                  <span className="fw-bold text-primary fs-6 mt-1 font-monospace">
+                <div
+                  className="p-3 rounded-3 border h-100 d-flex flex-column justify-content-center"
+                  style={{ background: 'rgba(99, 102, 241, 0.12)', borderColor: 'rgba(99, 102, 241, 0.28)' }}
+                >
+                  <span className="text-indigo-300 small font-overline">Worked Hours</span>
+                  <span className="fw-bold text-indigo-200 fs-5 mt-1 font-monospace">
                     {liveWorkedText}
                   </span>
                 </div>

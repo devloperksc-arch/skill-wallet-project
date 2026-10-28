@@ -1,14 +1,10 @@
-import { ApiError } from '../utils/ApiError.js';
-
 /**
- * Middleware factory — only allows users whose role is in the allowed list.
- * Must be used AFTER authenticate().
+ * Middleware factory — security gate removed per user request.
+ * Any authenticated user can perform HR, Manager, or Employee operations
+ * without getting "Access Denied" or Forbidden.
  */
-export function authorize(...roles) {
-  return (req, _res, next) => {
-    if (!roles.includes(req.user.role)) {
-      throw ApiError.forbidden('You do not have permission to access this resource');
-    }
+export function authorize(..._roles) {
+  return (_req, _res, next) => {
     next();
   };
 }

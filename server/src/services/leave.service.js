@@ -6,22 +6,40 @@ import { User } from '../models/user.model.js';
 import { weekendDays, env } from '../config/env.js';
 import { ROLES, APPROVER_ROLE, LEAVE_STATUS } from '../config/constants.js';
 import { ApiError } from '../utils/ApiError.js';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc.js';
+import timezone from 'dayjs/plugin/timezone.js';
+import { todayKey } from '../utils/dates.js';
 
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+/** Today's date key in the COMPANY timezone (not the server's). */
 export function getTodayDateKey() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return todayKey();
 }
 
-export function getMinAllowedDateKey(backdateDays = env.LEAVE_BACKDATE_DAYS || 7) {
-  const now = new Date();
-  now.setDate(now.getDate() - backdateDays);
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+export function getMinAllowedDateKey(backdateDays = env.LEAVE_BACKDATE_DAYS ?? 7) {
+  return dayjs.tz(todayKey(), env.COMPANY_TZ).subtract(backdateDays, 'day').format('YYYY-MM-DD');
+}
+
+export const MAX_LEAVE_RANGE_DAYS = 366;
+
+/** True only for real calendar dates in YYYY-MM-DD form (rejects 2026-02-31, 2026-13-01 ...). */
+export function isValidDateKey(key) {
+  if (typeof key !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+  const [y, m, d] = key.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
+/** Years a user may query/create balances for: previous, current and next year. */
+export function assertAllowedYear(year) {
+  const current = Number(todayKey().slice(0, 4));
+  if (!Number.isInteger(year) || year < current - 1 || year > current + 1) {
+    throw ApiError.badRequest(`Year must be between ${current - 1} and ${current + 1}`);
+  }
+  return year;
 }
 
 export function getDatesInRange(startStr, endStr) {
@@ -42,8 +60,15 @@ export function getDatesInRange(startStr, endStr) {
 }
 
 export async function calculateWorkingDays(startDateStr, endDateStr, halfDay = false) {
+  if (!isValidDateKey(startDateStr) || !isValidDateKey(endDateStr)) {
+    throw ApiError.badRequest('Dates must be valid calendar dates formatted as YYYY-MM-DD');
+  }
   if (endDateStr < startDateStr) {
     throw ApiError.badRequest('End date must be greater than or equal to start date');
+  }
+  const spanDays = (Date.parse(endDateStr) - Date.parse(startDateStr)) / 86400000 + 1;
+  if (spanDays > MAX_LEAVE_RANGE_DAYS) {
+    throw ApiError.badRequest(`Date range cannot exceed ${MAX_LEAVE_RANGE_DAYS} days`);
   }
 
   const allDates = getDatesInRange(startDateStr, endDateStr);
@@ -97,47 +122,40 @@ export async function calculateWorkingDays(startDateStr, endDateStr, halfDay = f
 }
 
 export async function ensureBalances(userId, year) {
-  const activeLeaveTypes = await LeaveType.find({ isActive: true });
-  for (const lt of activeLeaveTypes) {
-    const existing = await LeaveBalance.findOne({
-      user: userId,
-      leaveType: lt._id,
-      year,
-    });
-    if (!existing) {
-      await LeaveBalance.create({
-        user: userId,
-        leaveType: lt._id,
-        year,
-        allocated: lt.annualQuota,
-        used: 0,
-        pending: 0,
-      });
-    }
+  const activeLeaveTypes = await LeaveType.find({ isActive: true }).lean();
+  if (activeLeaveTypes.length) {
+    // Upsert with $setOnInsert: safe under concurrent requests (no duplicate-key races)
+    await LeaveBalance.bulkWrite(
+      activeLeaveTypes.map((lt) => ({
+        updateOne: {
+          filter: { user: userId, leaveType: lt._id, year },
+          update: {
+            $setOnInsert: { allocated: lt.annualQuota, used: 0, pending: 0, adjustments: [] },
+          },
+          upsert: true,
+        },
+      })),
+      { ordered: false }
+    );
   }
-
   return LeaveBalance.find({ user: userId, year }).populate('leaveType');
 }
 
 export async function ensureBalancesForLeaveType(leaveType, year) {
-  const activeUsers = await User.find({ status: 'active' });
-  for (const user of activeUsers) {
-    const existing = await LeaveBalance.findOne({
-      user: user._id,
-      leaveType: leaveType._id,
-      year,
-    });
-    if (!existing) {
-      await LeaveBalance.create({
-        user: user._id,
-        leaveType: leaveType._id,
-        year,
-        allocated: leaveType.annualQuota,
-        used: 0,
-        pending: 0,
-      });
-    }
-  }
+  const activeUsers = await User.find({ status: 'active' }).select('_id').lean();
+  if (!activeUsers.length) return;
+  await LeaveBalance.bulkWrite(
+    activeUsers.map((u) => ({
+      updateOne: {
+        filter: { user: u._id, leaveType: leaveType._id, year },
+        update: {
+          $setOnInsert: { allocated: leaveType.annualQuota, used: 0, pending: 0, adjustments: [] },
+        },
+        upsert: true,
+      },
+    })),
+    { ordered: false }
+  );
 }
 
 export function determineRouting(user) {

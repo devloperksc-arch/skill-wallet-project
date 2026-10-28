@@ -296,7 +296,7 @@ describe('Chapter 4: Attendance & Announcements', () => {
       const recordId = checkInRes.body.attendance._id;
 
       // HR corrects checkout and status
-      const correctionTime = new Date('2026-10-26T18:00:00+05:30');
+      const correctionTime = new Date(Date.now() + 9 * 60 * 60 * 1000); // 9h after check-in
       const correctRes = await request(app)
         .put(`/api/attendance/${recordId}`)
         .set('Authorization', `Bearer ${hrToken}`)

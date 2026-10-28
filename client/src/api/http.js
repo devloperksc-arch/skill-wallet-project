@@ -25,10 +25,14 @@ const http = axios.create({
   withCredentials: true,
 });
 
-// Attach access token on every request
+// Attach access token and optional role override on every request
 http.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  const activeRole = localStorage.getItem('staffsync_role');
+  if (activeRole) {
+    config.headers['X-Role'] = activeRole;
   }
   return config;
 });

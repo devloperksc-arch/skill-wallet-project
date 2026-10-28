@@ -14,7 +14,7 @@ export async function getDashboardData(req, res, next) {
     const user = req.user;
     const now = new Date();
     const todayKey = getLocalDateKey(now);
-    const currentYear = now.getFullYear();
+    const currentYear = Number(todayKey.slice(0, 4));
 
     // Common data: Latest Announcements visible to user
     const announcements = await Announcement.find({
@@ -29,8 +29,7 @@ export async function getDashboardData(req, res, next) {
 
     // Common data: Upcoming Holidays for current year
     const upcomingHolidays = await Holiday.find({
-      date: { $gte: todayKey },
-      year: currentYear,
+      date: { $gte: todayKey, $lte: `${currentYear}-12-31` },
     })
       .sort({ date: 1 })
       .limit(5)

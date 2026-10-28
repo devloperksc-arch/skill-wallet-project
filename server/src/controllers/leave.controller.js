@@ -9,6 +9,7 @@ import {
   determineRouting,
   getTodayDateKey,
   getMinAllowedDateKey,
+  assertAllowedYear,
 } from '../services/leave.service.js';
 import { ROLES, LEAVE_STATUS } from '../config/constants.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -30,7 +31,7 @@ export async function previewLeave(req, res, next) {
 
 export async function getOwnBalances(req, res, next) {
   try {
-    const year = req.query.year ? parseInt(req.query.year, 10) : new Date().getFullYear();
+    const year = assertAllowedYear(req.query.year ? parseInt(req.query.year, 10) : Number(getTodayDateKey().slice(0, 4)));
     const balances = await ensureBalances(req.user._id, year);
     res.json({ balances, year });
   } catch (err) {
@@ -41,7 +42,7 @@ export async function getOwnBalances(req, res, next) {
 export async function getUserBalances(req, res, next) {
   try {
     const { userId } = req.params;
-    const year = req.query.year ? parseInt(req.query.year, 10) : new Date().getFullYear();
+    const year = assertAllowedYear(req.query.year ? parseInt(req.query.year, 10) : Number(getTodayDateKey().slice(0, 4)));
 
     const targetUser = await User.findById(userId).populate('department', 'name code');
     if (!targetUser) {
@@ -69,7 +70,7 @@ export async function getUserBalances(req, res, next) {
 export async function adjustBalance(req, res, next) {
   try {
     const { id } = req.params;
-    const { allocated, reason } = req.body;
+    const { allocated, reason } = req.validated;
 
     const balance = await LeaveBalance.findById(id).populate('leaveType user');
     if (!balance) {
@@ -103,9 +104,28 @@ export async function adjustBalance(req, res, next) {
   }
 }
 
+async function acquireLeaveLock(userId) {
+  const now = new Date();
+  const locked = await User.findOneAndUpdate(
+    { _id: userId, $or: [{ leaveLockUntil: null }, { leaveLockUntil: { $lt: now } }] },
+    { $set: { leaveLockUntil: new Date(now.getTime() + 10000) } },
+    { projection: { _id: 1 } }
+  );
+  return !!locked;
+}
+
 export async function applyLeave(req, res, next) {
+  let reserved = null; // { balanceId, days } so we can roll back on any later failure
+  let lockHeld = false;
   try {
-    const { leaveType, startDate, endDate, halfDay, reason } = req.body;
+    // Serialise applications per user: stops double-submits / parallel requests from
+    // creating duplicate or overlapping requests or over-booking the balance.
+    lockHeld = await acquireLeaveLock(req.user._id);
+    if (!lockHeld) {
+      throw ApiError.conflict('Another leave request is being processed. Please try again.');
+    }
+
+    const { leaveType, startDate, endDate, halfDay, reason } = req.validated;
 
     const minAllowedDate = getMinAllowedDateKey();
     if (startDate < minAllowedDate) {
@@ -127,46 +147,55 @@ export async function applyLeave(req, res, next) {
 
     const { days } = await calculateWorkingDays(startDate, endDate, halfDay);
 
+    const reqYear = parseInt(startYear, 10);
+    await ensureBalances(req.user._id, reqYear);
+
+    // Atomically reserve the days: the availability check and the $inc are ONE operation,
+    // so concurrent requests can no longer over-book the balance.
+    const balanceFilter = {
+      user: req.user._id,
+      leaveType: leaveTypeDoc._id,
+      year: reqYear,
+    };
+    if (!leaveTypeDoc.isUnlimited) {
+      balanceFilter.$expr = {
+        $gte: [{ $subtract: ['$allocated', { $add: ['$used', '$pending'] }] }, days],
+      };
+    }
+    const balance = await LeaveBalance.findOneAndUpdate(
+      balanceFilter,
+      { $inc: { pending: days } },
+      { returnDocument: 'after' }
+    );
+    if (!balance) {
+      const current = await LeaveBalance.findOne({
+        user: req.user._id,
+        leaveType: leaveTypeDoc._id,
+        year: reqYear,
+      });
+      if (!current) throw ApiError.badRequest('Leave balance record not found');
+      const available = current.allocated - current.used - current.pending;
+      throw ApiError.badRequest(
+        `Insufficient leave balance. Available: ${available} days, requested: ${days} days`
+      );
+    }
+    reserved = { balanceId: balance._id, days };
+
+    // Overlap check AFTER reserving; if another request won the race we roll back.
     const overlap = await LeaveRequest.findOne({
       user: req.user._id,
       status: { $in: [LEAVE_STATUS.PENDING, LEAVE_STATUS.APPROVED] },
       startDate: { $lte: endDate },
       endDate: { $gte: startDate },
     });
-
     if (overlap) {
       throw ApiError.badRequest(
         'You already have a pending or approved leave request overlapping these dates'
       );
     }
 
-    const reqYear = parseInt(startYear, 10);
-    await ensureBalances(req.user._id, reqYear);
-
-    const balance = await LeaveBalance.findOne({
-      user: req.user._id,
-      leaveType: leaveTypeDoc._id,
-      year: reqYear,
-    });
-
-    if (!balance) {
-      throw ApiError.badRequest('Leave balance record not found');
-    }
-
-    const available = balance.allocated - balance.used - balance.pending;
-    if (!leaveTypeDoc.isUnlimited && days > available) {
-      throw ApiError.badRequest(
-        `Insufficient leave balance. Available: ${available} days, requested: ${days} days`
-      );
-    }
-
     const userDoc = await User.findById(req.user._id);
     const routing = determineRouting(userDoc);
-
-    await LeaveBalance.updateOne(
-      { _id: balance._id },
-      { $inc: { pending: days } }
-    );
 
     const leaveRequest = await LeaveRequest.create({
       user: req.user._id,
@@ -180,6 +209,24 @@ export async function applyLeave(req, res, next) {
       approverRole: routing.approverRole,
       assignedTo: routing.assignedTo,
     });
+    reserved = null; // success — keep the reservation
+
+    // Concurrent duplicate guard: if two identical requests slipped through, keep the oldest only.
+    const dupes = await LeaveRequest.find({
+      user: req.user._id,
+      status: { $in: [LEAVE_STATUS.PENDING, LEAVE_STATUS.APPROVED] },
+      startDate: { $lte: endDate },
+      endDate: { $gte: startDate },
+    })
+      .sort({ createdAt: 1, _id: 1 })
+      .select('_id');
+    if (dupes.length > 1 && String(dupes[0]._id) !== String(leaveRequest._id)) {
+      await LeaveRequest.deleteOne({ _id: leaveRequest._id, status: LEAVE_STATUS.PENDING });
+      await LeaveBalance.updateOne({ _id: balance._id }, { $inc: { pending: -days } });
+      throw ApiError.badRequest(
+        'You already have a pending or approved leave request overlapping these dates'
+      );
+    }
 
     await leaveRequest.populate('leaveType');
 
@@ -188,7 +235,17 @@ export async function applyLeave(req, res, next) {
       leaveRequest,
     });
   } catch (err) {
+    if (reserved) {
+      await LeaveBalance.updateOne(
+        { _id: reserved.balanceId },
+        { $inc: { pending: -reserved.days } }
+      ).catch(() => {});
+    }
     next(err);
+  } finally {
+    if (lockHeld) {
+      await User.updateOne({ _id: req.user._id }, { $set: { leaveLockUntil: null } }).catch(() => {});
+    }
   }
 }
 
@@ -347,7 +404,7 @@ export async function getLeaveById(req, res, next) {
 export async function decideLeave(req, res, next) {
   try {
     const { id } = req.params;
-    const { decision, note } = req.body;
+    const { decision, note } = req.validated;
 
     const request = await LeaveRequest.findById(id);
     if (!request) {
@@ -421,37 +478,34 @@ export async function cancelLeave(req, res, next) {
     const reqYear = parseInt(request.startDate.slice(0, 4), 10);
     const today = getTodayDateKey();
 
-    if (request.status === LEAVE_STATUS.PENDING) {
-      request.status = LEAVE_STATUS.CANCELLED;
-      request.cancelledAt = new Date();
-      await request.save();
-
-      await LeaveBalance.updateOne(
-        { user: request.user, leaveType: request.leaveType, year: reqYear },
-        { $inc: { pending: -request.days } }
+    if (request.status === LEAVE_STATUS.APPROVED && request.startDate <= today) {
+      throw ApiError.badRequest(
+        'Cannot cancel an approved leave that has already started or is in the past'
       );
-    } else if (request.status === LEAVE_STATUS.APPROVED) {
-      if (request.startDate <= today) {
-        throw ApiError.badRequest(
-          'Cannot cancel an approved leave that has already started or is in the past'
-        );
-      }
-
-      request.status = LEAVE_STATUS.CANCELLED;
-      request.cancelledAt = new Date();
-      await request.save();
-
-      await LeaveBalance.updateOne(
-        { user: request.user, leaveType: request.leaveType, year: reqYear },
-        { $inc: { used: -request.days } }
-      );
-    } else {
+    }
+    if (![LEAVE_STATUS.PENDING, LEAVE_STATUS.APPROVED].includes(request.status)) {
       throw ApiError.badRequest('Leave request cannot be cancelled in its current state');
     }
 
+    // Atomic state transition: only ONE concurrent cancel can win, so balances are restored once.
+    const wasStatus = request.status;
+    const cancelled = await LeaveRequest.findOneAndUpdate(
+      { _id: id, user: req.user._id, status: wasStatus },
+      { status: LEAVE_STATUS.CANCELLED, cancelledAt: new Date() },
+      { returnDocument: 'after' }
+    );
+    if (!cancelled) {
+      throw ApiError.conflict('Request was already processed or cancelled');
+    }
+
+    await LeaveBalance.updateOne(
+      { user: request.user, leaveType: request.leaveType, year: reqYear },
+      { $inc: wasStatus === LEAVE_STATUS.PENDING ? { pending: -request.days } : { used: -request.days } }
+    );
+
     res.json({
       message: 'Leave request cancelled successfully',
-      leave: request,
+      leave: cancelled,
     });
   } catch (err) {
     next(err);
@@ -461,6 +515,9 @@ export async function cancelLeave(req, res, next) {
 export async function getLeaveCalendar(req, res, next) {
   try {
     const month = req.query.month || getTodayDateKey().slice(0, 7);
+    if (typeof month !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      throw ApiError.badRequest('month must be formatted as YYYY-MM');
+    }
     const startDate = `${month}-01`;
     const endDate = `${month}-31`;
 
@@ -489,9 +546,21 @@ export async function getLeaveCalendar(req, res, next) {
     }
 
     const leaves = await LeaveRequest.find(leaveQuery)
+      // Privacy: never expose reason / decision notes to colleagues; only HR and the owner's manager
+      // may see the leave category, everyone else just sees that the person is away.
+      .select('user leaveType startDate endDate halfDay days status')
       .populate('user', 'name employeeCode department designation')
       .populate('leaveType', 'name code isPaid')
-      .sort({ startDate: 1 });
+      .sort({ startDate: 1 })
+      .lean();
+
+    if (req.user.role === ROLES.EMPLOYEE) {
+      for (const l of leaves) {
+        if (String(l.user?._id) !== String(req.user._id)) {
+          l.leaveType = { name: 'On leave', code: 'LEAVE' };
+        }
+      }
+    }
 
     res.json({
       month,

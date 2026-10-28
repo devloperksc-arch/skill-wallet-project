@@ -1,0 +1,16 @@
+# Keep secrets, local data and host-built artifacts OUT of the image / build context
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+**/.mongodb_data
+.git
+.github
+client/dist
+coverage
+**/*.log
+**/tests
+docs
+README.md
+Dockerfile
+docker-compose.yml

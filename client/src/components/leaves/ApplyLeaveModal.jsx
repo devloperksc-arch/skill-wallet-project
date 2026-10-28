@@ -7,8 +7,9 @@ export default function ApplyLeaveModal({ show, onClose, onSuccess, balances = [
   const currentYear = new Date().getFullYear();
 
   // Helper date strings
-  const today = new Date().toISOString().split('T')[0];
-  const minDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // Local calendar dates (toISOString() would give the UTC date, which is wrong for users east of UTC at night)
+  const toKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const minDate = toKey(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
   const maxDate = `${currentYear}-12-31`;
 
   const [formData, setFormData] = useState({

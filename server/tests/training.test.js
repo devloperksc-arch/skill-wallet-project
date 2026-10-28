@@ -22,7 +22,7 @@ describe('Chapter 5: Training & Development, Dashboards & Hardening', () => {
 
   const signToken = (user) => {
     return jwt.sign(
-      { sub: user._id.toString(), role: user.role, email: user.email, tokenVersion: user.tokenVersion || 0 },
+      { sub: user._id.toString(), role: user.role, email: user.email, tv: user.tokenVersion || 0, },
       env.JWT_ACCESS_SECRET,
       { expiresIn: '15m' }
     );

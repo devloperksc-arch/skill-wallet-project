@@ -2,7 +2,7 @@ import * as trainingService from '../services/training.service.js';
 
 export async function createProgram(req, res, next) {
   try {
-    const program = await trainingService.createProgram(req.user._id, req.body);
+    const program = await trainingService.createProgram(req.user._id, req.validated);
     res.status(201).json({ success: true, program });
   } catch (err) {
     next(err);
@@ -29,7 +29,7 @@ export async function getProgramById(req, res, next) {
 
 export async function updateProgram(req, res, next) {
   try {
-    const program = await trainingService.updateProgram(req.user._id, req.params.id, req.body);
+    const program = await trainingService.updateProgram(req.user._id, req.params.id, req.validated);
     res.json({ success: true, program });
   } catch (err) {
     next(err);
@@ -38,7 +38,7 @@ export async function updateProgram(req, res, next) {
 
 export async function updateProgramStatus(req, res, next) {
   try {
-    const program = await trainingService.updateProgramStatus(req.user._id, req.params.id, req.body.status);
+    const program = await trainingService.updateProgramStatus(req.user._id, req.params.id, req.validated.status);
     res.json({ success: true, program });
   } catch (err) {
     next(err);
@@ -59,7 +59,7 @@ export async function enrollEmployees(req, res, next) {
     const enrollments = await trainingService.enrollEmployees(
       req.user._id,
       req.params.id,
-      req.body.userIds
+      req.validated.userIds
     );
     res.status(201).json({ success: true, enrollments, count: enrollments.length });
   } catch (err) {
@@ -100,7 +100,7 @@ export async function getUserEnrollments(req, res, next) {
 
 export async function updateEnrollment(req, res, next) {
   try {
-    const enrollment = await trainingService.updateEnrollment(req.user, req.params.id, req.body);
+    const enrollment = await trainingService.updateEnrollment(req.user, req.params.id, req.validated);
     res.json({ success: true, enrollment });
   } catch (err) {
     next(err);

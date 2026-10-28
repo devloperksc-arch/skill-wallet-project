@@ -3,6 +3,7 @@ import { User, generateEmployeeCode } from '../models/user.model.js';
 import { Department } from '../models/department.model.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ROLES, USER_STATUS } from '../config/constants.js';
+import { LeaveRequest } from '../models/leaveRequest.model.js';
 import { ensureBalances } from '../services/leave.service.js';
 
 function escapeRegex(str) {
@@ -21,16 +22,29 @@ function generateTemporaryPassword() {
   pwd += symbols[crypto.randomInt(0, symbols.length)];
 
   const all = chars + uppers + numbers + symbols;
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 9; i++) {
     pwd += all[crypto.randomInt(0, all.length)];
   }
 
-  // Shuffle
-  return pwd.split('').sort(() => 0.5 - Math.random()).join('');
+  // Fisher–Yates shuffle with a CSPRNG (the old sort(Math.random) was biased and not cryptographic)
+  const arr = pwd.split('');
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.join('');
 }
 
 export async function listEmployees(req, res) {
-  const { page = 1, limit = 10, q, department, role, status, manager, sortBy = 'createdAt', order = 'desc' } = req.query;
+  const str = (v) => (typeof v === 'string' ? v : undefined);
+  const { page = 1, limit = 10, order = 'desc' } = req.query;
+  const q = str(req.query.q);
+  const department = str(req.query.department);
+  const role = str(req.query.role);
+  const status = str(req.query.status);
+  const manager = str(req.query.manager);
+  const SORTABLE = ['createdAt', 'name', 'email', 'employeeCode', 'designation', 'dateOfJoining', 'status', 'role'];
+  const sortBy = SORTABLE.includes(req.query.sortBy) ? req.query.sortBy : 'createdAt';
 
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
@@ -82,7 +96,7 @@ export async function listEmployees(req, res) {
 }
 
 export async function getDirectory(req, res) {
-  const { q } = req.query;
+  const q = typeof req.query.q === 'string' ? req.query.q : undefined;
   const filter = { status: USER_STATUS.ACTIVE };
 
   if (q && q.trim()) {
@@ -208,12 +222,24 @@ export async function updateEmployee(req, res) {
       if (!mgr || (mgr.role !== ROLES.MANAGER && mgr.role !== ROLES.HR)) {
         throw ApiError.badRequest('Assigned manager must have Manager or HR role');
       }
+      // Prevent reporting cycles (A -> B -> ... -> A)
+      let cursor = mgr;
+      for (let hops = 0; cursor && hops < 50; hops++) {
+        if (String(cursor._id) === String(employee._id)) {
+          throw ApiError.badRequest('Invalid manager: this would create a circular reporting chain');
+        }
+        cursor = cursor.manager ? await User.findById(cursor.manager).select('manager') : null;
+      }
       employee.manager = body.manager;
     } else {
       employee.manager = null;
     }
   }
 
+  if (body.department) {
+    const deptExists = await Department.exists({ _id: body.department });
+    if (!deptExists) throw ApiError.badRequest('Specified department does not exist');
+  }
   if (body.department !== undefined) employee.department = body.department || null;
   if (body.name !== undefined) employee.name = body.name;
   if (body.role !== undefined) employee.role = body.role;
@@ -225,7 +251,18 @@ export async function updateEmployee(req, res) {
   if (body.address !== undefined) employee.address = body.address;
   if (body.emergencyContact !== undefined) employee.emergencyContact = body.emergencyContact;
 
+  const managerChanged = employee.isModified('manager');
   await employee.save();
+
+  // Re-route this employee's still-pending leave requests to the new approver
+  if (managerChanged) {
+    await LeaveRequest.updateMany(
+      { user: employee._id, status: 'pending' },
+      employee.manager
+        ? { assignedTo: employee.manager, approverRole: 'manager' }
+        : { assignedTo: null, approverRole: 'hr' }
+    );
+  }
 
   const updated = await User.findById(employee._id)
     .populate('department', 'name code')
@@ -266,6 +303,13 @@ export async function updateStatus(req, res) {
 
   if (id === req.user._id.toString() && status === USER_STATUS.INACTIVE) {
     throw ApiError.badRequest('You cannot deactivate your own account');
+  }
+
+  if (status === USER_STATUS.INACTIVE && employee.role === ROLES.MANAGER) {
+    const reports = await User.countDocuments({ manager: employee._id, status: USER_STATUS.ACTIVE });
+    if (reports > 0) {
+      throw ApiError.conflict('Cannot deactivate a manager who still has active direct reports. Reassign them first.');
+    }
   }
 
   if (status === USER_STATUS.INACTIVE && employee.role === ROLES.HR) {

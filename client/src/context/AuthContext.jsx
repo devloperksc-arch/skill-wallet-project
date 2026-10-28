@@ -15,7 +15,8 @@ export function AuthProvider({ children }) {
         const { data: refreshData } = await authApi.refresh();
         setAccessToken(refreshData.data.accessToken);
         const { data: meData } = await authApi.me();
-        setUser(meData.data);
+        const storedRole = localStorage.getItem('staffsync_role');
+        setUser({ ...meData.data, ...(storedRole ? { role: storedRole } : {}) });
       } catch {
         setUser(null);
       } finally {
@@ -27,8 +28,10 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const { data } = await authApi.login({ email, password });
     setAccessToken(data.data.accessToken);
-    setUser(data.data.user);
-    return data.data.user;
+    const storedRole = localStorage.getItem('staffsync_role');
+    const u = { ...data.data.user, ...(storedRole ? { role: storedRole } : {}) };
+    setUser(u);
+    return u;
   }, []);
 
   const logout = useCallback(async () => {
@@ -37,11 +40,15 @@ export function AuthProvider({ children }) {
     } catch {
       // ignore
     }
+    localStorage.removeItem('staffsync_role');
     setAccessToken(null);
     setUser(null);
   }, []);
 
   const updateUser = useCallback((updates) => {
+    if (updates.role) {
+      localStorage.setItem('staffsync_role', updates.role);
+    }
     setUser((prev) => ({ ...prev, ...updates }));
   }, []);
 

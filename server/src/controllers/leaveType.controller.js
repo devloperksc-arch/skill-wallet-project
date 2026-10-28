@@ -14,7 +14,7 @@ export async function getLeaveTypes(req, res, next) {
 
 export async function createLeaveType(req, res, next) {
   try {
-    const { name, code, annualQuota, isPaid, isUnlimited, isActive, description } = req.body;
+    const { name, code, annualQuota, isPaid, isUnlimited, isActive, description } = req.validated;
     const existing = await LeaveType.findOne({ code: code.toUpperCase() });
     if (existing) {
       throw ApiError.conflict(`Leave type with code '${code.toUpperCase()}' already exists`);
@@ -45,7 +45,7 @@ export async function createLeaveType(req, res, next) {
 export async function updateLeaveType(req, res, next) {
   try {
     const { id } = req.params;
-    const { name, code, annualQuota, isPaid, isUnlimited, isActive, description } = req.body;
+    const { name, code, annualQuota, isPaid, isUnlimited, isActive, description } = req.validated;
 
     const leaveType = await LeaveType.findById(id);
     if (!leaveType) {

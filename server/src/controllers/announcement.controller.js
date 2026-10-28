@@ -19,11 +19,11 @@ export async function getAnnouncements(req, res, next) {
       audience: { $in: ['all', req.user.role] },
     };
 
-    if (req.query.category) {
+    if (typeof req.query.category === 'string') {
       query.category = req.query.category;
     }
 
-    if (req.query.q) {
+    if (typeof req.query.q === 'string' && req.query.q.trim()) {
       const escaped = escapeRegex(req.query.q.trim());
       query.$and = [
         {
@@ -155,7 +155,7 @@ export async function getManageAnnouncements(req, res, next) {
 
 export async function createAnnouncement(req, res, next) {
   try {
-    const { title, body, category, priority, audience, isPinned, publishAt, expiresAt } = req.body;
+    const { title, body, category, priority, audience, isPinned, publishAt, expiresAt } = req.validated;
 
     const announcement = await Announcement.create({
       title,
@@ -181,7 +181,7 @@ export async function createAnnouncement(req, res, next) {
 export async function updateAnnouncement(req, res, next) {
   try {
     const { id } = req.params;
-    const { title, body, category, priority, audience, isPinned, publishAt, expiresAt } = req.body;
+    const { title, body, category, priority, audience, isPinned, publishAt, expiresAt } = req.validated;
 
     const announcement = await Announcement.findById(id);
     if (!announcement) {

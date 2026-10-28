@@ -40,6 +40,18 @@ export function errorHandler(err, req, res, _next) {
     return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 
+  // Errors raised by body-parser / http-errors (malformed JSON, payload too large, ...)
+  const status = err.status || err.statusCode;
+  if (Number.isInteger(status) && status >= 400 && status < 500) {
+    const message =
+      err.type === 'entity.parse.failed'
+        ? 'Malformed JSON in request body'
+        : err.type === 'entity.too.large'
+          ? 'Request body too large'
+          : 'Bad request';
+    return res.status(status).json({ success: false, message });
+  }
+
   // Unknown errors
   console.error(err);
   const message = isProduction ? 'Internal server error' : err.message;

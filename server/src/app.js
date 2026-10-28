@@ -26,6 +26,7 @@ const __dirname = path.dirname(__filename);
 
 export function createApp() {
   const app = express();
+  if (env.TRUST_PROXY > 0) app.set('trust proxy', env.TRUST_PROXY);
 
   // Security
   app.use(
@@ -54,7 +55,7 @@ export function createApp() {
   app.use(cookieParser());
 
   // Request logging (dev only)
-  if (env.NODE_ENV !== 'test') {
+  if (env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
   }
 
@@ -74,6 +75,7 @@ export function createApp() {
     rateLimit({
       windowMs: 15 * 60 * 1000,
       max: env.NODE_ENV === 'test' ? 100 : 10,
+      skipSuccessfulRequests: true, // only failed attempts count toward the limit
       standardHeaders: true,
       legacyHeaders: false,
     })
@@ -83,7 +85,7 @@ export function createApp() {
   app.get('/api/health', (_req, res) => {
     const dbStatus = getDBStatus();
     const status = dbStatus === 'connected' ? 200 : 503;
-    res.status(status).json({ status: 'ok', db: dbStatus });
+    res.status(status).json({ status: status === 200 ? 'ok' : 'degraded', db: dbStatus });
   });
 
   // API Routes

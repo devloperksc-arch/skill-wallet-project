@@ -65,3 +65,14 @@ export const managerUpdateEnrollmentSchema = z.object({
   managerNote: z.string().trim().optional(),
   status: z.enum(['enrolled', 'in_progress', 'completed', 'dropped']).optional(),
 });
+
+// Single endpoint serves both employees (progress/feedback) and managers/HR (score/note); service enforces who may set what.
+export const updateEnrollmentSchema = z
+  .object({
+    status: z.enum(['enrolled', 'in_progress', 'completed', 'dropped']).optional(),
+    progress: z.number().min(0).max(100).optional(),
+    feedback: z.string().trim().max(2000).optional(),
+    score: z.number().min(0).max(100).nullable().optional(),
+    managerNote: z.string().trim().max(2000).optional(),
+  })
+  .strict();

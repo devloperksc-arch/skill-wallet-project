@@ -8,6 +8,7 @@ import {
   updateTrainingProgramSchema,
   updateProgramStatusSchema,
   enrollEmployeesSchema,
+  updateEnrollmentSchema,
 } from '../validators/training.validator.js';
 
 const router = Router();
@@ -18,7 +19,7 @@ router.use(authenticate);
 router.get('/my', trainingController.getMyEnrollments);
 router.get('/user/:userId', trainingController.getUserEnrollments);
 router.get('/reports/summary', authorize('manager', 'hr'), trainingController.getTrainingSummary);
-router.patch('/enrollments/:id', trainingController.updateEnrollment);
+router.patch('/enrollments/:id', validate(updateEnrollmentSchema), trainingController.updateEnrollment);
 
 // Program CRUD routes
 router.get('/', trainingController.getPrograms);

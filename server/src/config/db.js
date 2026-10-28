@@ -12,7 +12,7 @@ export async function connectDB() {
     });
     console.log(`✅  MongoDB connected: ${mongoose.connection.host}`);
   } catch (err) {
-    if (env.NODE_ENV !== 'production') {
+    if (env.NODE_ENV === 'development') {
       console.log(`⚠️  Local MongoDB at ${env.MONGODB_URI} is not running (${err.message}).`);
       console.log(`🚀  Starting embedded development MongoDB server...`);
       try {

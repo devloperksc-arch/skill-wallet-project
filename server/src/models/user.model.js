@@ -53,6 +53,8 @@ const userSchema = new mongoose.Schema(
     mustChangePassword: { type: Boolean, default: false },
     tokenVersion: { type: Number, default: 0 },
     lastLoginAt: { type: Date },
+    // Short-lived per-user mutex used to serialise leave applications (no multi-doc transactions on standalone Mongo)
+    leaveLockUntil: { type: Date, default: null, select: false },
   },
   { timestamps: true }
 );

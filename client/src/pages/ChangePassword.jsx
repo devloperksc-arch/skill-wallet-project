@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { authApi } from '../api/auth.js';
+import { setAccessToken } from '../api/http.js';
 import FormField from '../components/FormField.jsx';
 import Spinner from 'react-bootstrap/Spinner';
 
@@ -47,7 +48,9 @@ export default function ChangePassword() {
 
     setSubmitting(true);
     try {
-      await authApi.changePassword({ currentPassword, newPassword });
+      const { data } = await authApi.changePassword({ currentPassword, newPassword });
+      // The server revoked the old access token (tokenVersion bump) and issued a new one
+      if (data?.data?.accessToken) setAccessToken(data.data.accessToken);
       updateUser({ mustChangePassword: false });
       showToast('Password changed successfully!', 'success');
 
@@ -83,6 +86,8 @@ export default function ChangePassword() {
         <FormField label="Current Password" required id="current-password">
           <input
             type="password"
+            id="current-password"
+            autoComplete="current-password"
             className="form-control"
             placeholder="••••••••"
             value={currentPassword}
@@ -100,6 +105,8 @@ export default function ChangePassword() {
         >
           <input
             type="password"
+            id="new-password"
+            autoComplete="new-password"
             className="form-control"
             placeholder="••••••••"
             value={newPassword}
@@ -112,6 +119,8 @@ export default function ChangePassword() {
         <FormField label="Confirm New Password" required id="confirm-password">
           <input
             type="password"
+            id="confirm-password"
+            autoComplete="new-password"
             className="form-control"
             placeholder="••••••••"
             value={confirmPassword}

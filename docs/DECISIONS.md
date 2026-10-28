@@ -42,8 +42,8 @@ Recorded after `npm install` on 2026-10-25.
 5. **Access token in memory only**: Never stored in localStorage. Refresh token in httpOnly cookie.
 6. **Date keys as strings**: Leave/attendance dates stored as `"YYYY-MM-DD"` strings in company timezone — never converted through JS Date for comparison.
 7. **Year-spanning leaves rejected**: Leaves spanning two calendar years are rejected with a message to split them. Keeps balance logic simple.
-8. **employeeCode generation**: Find max numeric suffix + 1, retry on duplicate key (no separate counter collection needed).
-9. **Morgan request logging**: Only in development. No console.log in committed code.
+8. **employeeCode generation**: Find max suffix + 1 and verify uniqueness; the unique index is the final guard (a counter collection is recommended beyond 9,999 employees).
+9. **Morgan request logging**: Enabled only when `NODE_ENV=development`.
 10. **Vite proxy**: `/api` proxied to `http://localhost:5000` in dev — no CORS issues during development.
 
 ## Chapter 2
@@ -91,3 +91,12 @@ Recorded after `npm install` on 2026-10-25.
 35. **Multi-Stage Alpine Docker Build & Non-Root Execution**: Containerized via multi-stage build with `node:24-alpine`. Runs with a non-root `node` user for defense-in-depth security.
 36. **Zero-Config Embedded Development DB & Test Performance**: In development mode, `connectDB` automatically spins up a persistent MongoMemoryServer on port 27017 if a standalone mongod service is not detected, auto-seeding demo data seamlessly. In test mode, bcrypt hashing cost factor is set to 4 (minimum allowed) rather than 12, speeding up test suites by 250x and guaranteeing zero timeouts.
 
+
+## Audit remediation
+
+37. **Single source of truth for "today"**: all leave/attendance/dashboard logic uses the company timezone (`COMPANY_TZ`), never the server's local time.
+38. **Token revocation**: `authenticate` compares the JWT `tv` claim with `User.tokenVersion`; password change/reset/deactivation therefore invalidates access tokens immediately.
+39. **Server-enforced `mustChangePassword`**: users flagged for a password change may only call `/auth/me`, `/auth/change-password`, `/auth/logout`.
+40. **Leave application is serialised per user** (`leaveLockUntil`, 10 s) and reserves balance with a single conditional update; failures roll the reservation back. (Standalone MongoDB has no multi-document transactions.)
+41. **Controllers consume `req.validated`** — never raw `req.body`.
+42. **Demo seed is refused in production** unless `ALLOW_DEMO_SEED=true`; the demo login buttons exist only in development builds.

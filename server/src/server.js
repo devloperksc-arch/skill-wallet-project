@@ -15,9 +15,11 @@ async function main() {
   // Graceful shutdown
   const shutdown = async (signal) => {
     console.log(`\n${signal} received — shutting down gracefully…`);
-    await closeDB();
-    server.close(() => {
+    const force = setTimeout(() => process.exit(1), 10000);
+    force.unref();
+    server.close(async () => {
       console.log('HTTP server closed');
+      await closeDB();
       process.exit(0);
     });
   };

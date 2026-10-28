@@ -1,5 +1,24 @@
-import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
 import { z } from 'zod';
+
+// Always load server/.env regardless of the process working directory
+// (fixes `npm run seed` / `npm start` from the repo root).
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
+// In tests we supply safe throw-away secrets so CI works without a .env file.
+if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+  process.env.JWT_ACCESS_SECRET ??= 'test-access-secret-min-32-chars-xx';
+  process.env.JWT_REFRESH_SECRET ??= 'test-refresh-secret-min-32-chars-x';
+  process.env.MONGODB_URI ??= 'mongodb://127.0.0.1:27017/staffsync-test';
+}
+
+const bool = z
+  .enum(['true', 'false', '1', '0'])
+  .default('false')
+  .transform((v) => v === 'true' || v === '1');
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -18,6 +37,10 @@ const envSchema = z.object({
   WEEKEND_DAYS: z.string().default('0,6'),
   LEAVE_BACKDATE_DAYS: z.coerce.number().default(7),
   SEED_PASSWORD: z.string().default('Passw0rd!23'),
+  // Number of reverse-proxy hops to trust for client IP (0 = none). Set 1 behind nginx/Render/etc.
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  // Production only: allow seeding the demo accounts (never enable on a real system)
+  ALLOW_DEMO_SEED: bool,
 });
 
 const parsed = envSchema.safeParse(process.env);

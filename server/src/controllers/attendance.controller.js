@@ -13,6 +13,15 @@ import { weekendDays, env } from '../config/env.js';
 import { ATTENDANCE_STATUS, LEAVE_STATUS, ROLES } from '../config/constants.js';
 import { ApiError } from '../utils/ApiError.js';
 
+/** Validate ?month=YYYY-MM (defaults to the current company month). */
+function resolveMonth(req) {
+  const month = req.query.month || getLocalDateKey(new Date()).slice(0, 7);
+  if (typeof month !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    throw ApiError.badRequest('month must be formatted as YYYY-MM');
+  }
+  return month;
+}
+
 export async function checkIn(req, res, next) {
   try {
     const attendance = await checkInUser(req.user._id);
@@ -62,7 +71,7 @@ export async function getTodayStatus(req, res, next) {
 export async function getMyMonthlyAttendance(req, res, next) {
   try {
     const todayKey = getLocalDateKey(new Date());
-    const month = req.query.month || todayKey.slice(0, 7);
+    const month = resolveMonth(req);
     const startDate = `${month}-01`;
     const endDate = `${month}-31`;
 
@@ -82,6 +91,7 @@ export async function getMyMonthlyAttendance(req, res, next) {
       }).populate('leaveType', 'name code'),
     ]);
 
+    const joinedKey = req.user.dateOfJoining ? getLocalDateKey(new Date(req.user.dateOfJoining)) : '0000-00-00';
     const recordMap = new Map(records.map((r) => [r.date, r]));
     const holidayMap = new Map(holidays.map((h) => [h.date, h.name]));
 
@@ -122,6 +132,8 @@ export async function getMyMonthlyAttendance(req, res, next) {
         derivedStatus = 'holiday';
       } else if (isWeekend) {
         derivedStatus = 'weekend';
+      } else if (dateKey < joinedKey) {
+        derivedStatus = null; // before joining date: not applicable
       } else if (isPast) {
         derivedStatus = 'absent';
         absentCount++;
@@ -214,7 +226,7 @@ export async function getTeamAttendance(req, res, next) {
 export async function getTeamAttendanceSummary(req, res, next) {
   try {
     const todayKey = getLocalDateKey(new Date());
-    const month = req.query.month || todayKey.slice(0, 7);
+    const month = resolveMonth(req);
     const startDate = `${month}-01`;
     const endDate = `${month}-31`;
 
@@ -304,7 +316,7 @@ export async function getAllAttendance(req, res, next) {
 export async function getMonthlyAttendanceSummary(req, res, next) {
   try {
     const todayKey = getLocalDateKey(new Date());
-    const month = req.query.month || todayKey.slice(0, 7);
+    const month = resolveMonth(req);
     const startDate = `${month}-01`;
     const endDate = `${month}-31`;
 
@@ -358,10 +370,10 @@ function sanitizeCsvCell(value) {
   if (value === null || value === undefined) return '';
   let str = String(value);
   // Formula injection prevention: characters = + - @ at cell start
-  if (/^[=+\-@]/.test(str)) {
+  if (/^[=+\-@\t\r]/.test(str)) {
     str = `'${str}`;
   }
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     str = `"${str.replace(/"/g, '""')}"`;
   }
   return str;
@@ -369,7 +381,7 @@ function sanitizeCsvCell(value) {
 
 export async function exportAttendanceCsv(req, res, next) {
   try {
-    const month = req.query.month || getLocalDateKey(new Date()).slice(0, 7);
+    const month = resolveMonth(req);
     const startDate = `${month}-01`;
     const endDate = `${month}-31`;
 
@@ -416,7 +428,7 @@ export async function exportAttendanceCsv(req, res, next) {
 export async function correctAttendance(req, res, next) {
   try {
     const { id } = req.params;
-    const { checkIn, checkOut, status, correctionReason } = req.body;
+    const { checkIn, checkOut, status, correctionReason } = req.validated;
 
     const record = await Attendance.findById(id);
     if (!record) {
@@ -439,6 +451,11 @@ export async function correctAttendance(req, res, next) {
     if (checkOut !== undefined) {
       record.checkOut = checkOut ? new Date(checkOut) : null;
     }
+
+    if (record.checkIn && record.checkOut && record.checkOut < record.checkIn) {
+      throw ApiError.badRequest('Check-out cannot be earlier than check-in');
+    }
+    if (checkIn) record.isLate = isCheckInLate(record.checkIn);
 
     if (record.checkIn && record.checkOut) {
       record.workedMinutes = Math.max(0, Math.round((record.checkOut.getTime() - record.checkIn.getTime()) / 60000));
@@ -464,7 +481,19 @@ export async function correctAttendance(req, res, next) {
 
 export async function createMissingAttendance(req, res, next) {
   try {
-    const { userId, date, checkIn, checkOut, status, correctionReason } = req.body;
+    const { userId, date, checkIn, checkOut, status, correctionReason } = req.validated;
+
+    const targetUser = await User.findById(userId).select('_id');
+    if (!targetUser) throw ApiError.notFound('Employee not found');
+    if (date > getLocalDateKey(new Date())) {
+      throw ApiError.badRequest('Cannot create attendance for a future date');
+    }
+    if (getLocalDateKey(new Date(checkIn)) !== date) {
+      throw ApiError.badRequest('Check-in time must fall on the given date (company timezone)');
+    }
+    if (checkOut && new Date(checkOut) < new Date(checkIn)) {
+      throw ApiError.badRequest('Check-out cannot be earlier than check-in');
+    }
 
     const existing = await Attendance.findOne({ user: userId, date });
     if (existing) {

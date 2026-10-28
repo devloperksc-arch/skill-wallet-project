@@ -52,7 +52,7 @@ staffsync/
 │   │   ├── validators/             # Strict Zod validation schemas
 │   │   ├── utils/                  # ApiError, dates (company timezone), pagination
 │   │   └── seed/                   # Idempotent database seeder
-│   └── tests/                      # 86 automated tests (vitest, supertest, mongodb-memory-server)
+│   └── tests/                      # 121 automated tests (vitest, supertest, mongodb-memory-server)
 └── client/                         # React 19 + React Router v8 + Bootstrap 5.3 + Vite 7
     ├── src/
     │   ├── api/                    # Axios API client modules with token auto-refresh
@@ -76,7 +76,9 @@ staffsync/
 | `JWT_REFRESH_SECRET` | Secret key for signing 7-day refresh tokens (min 32 chars) | `change-me-to-another-secure-secret-key-32-chars!` |
 | `ACCESS_TOKEN_TTL` | Lifespan of access token | `15m` |
 | `REFRESH_TOKEN_TTL` | Lifespan of refresh token | `7d` |
-| `CLIENT_ORIGIN` | Allowed CORS origin (development only) | `http://localhost:5173` |
+| `CLIENT_ORIGIN` | Allowed CORS origin + CSP `connect-src` (set to your public URL in production) | `http://localhost:5173` |
+| `TRUST_PROXY` | Reverse-proxy hops to trust for client IP / rate limiting (`0` none, `1` behind one proxy) | `0` |
+| `ALLOW_DEMO_SEED` | Production only: allow seeding demo accounts (**never on a real system**) | `false` |
 | `COMPANY_TZ` | Authoritative organization timezone | `Asia/Kolkata` |
 | `WORK_START` | Official start of workday | `09:30` |
 | `LATE_GRACE_MINUTES` | Grace window before marking attendance as late | `15` |
@@ -84,7 +86,7 @@ staffsync/
 | `HALF_DAY_MINUTES` | Minimum worked minutes required for half-day status | `240` |
 | `WEEKEND_DAYS` | Comma-separated weekend day indexes (0=Sun, 6=Sat) | `0,6` |
 | `LEAVE_BACKDATE_DAYS`| Allowed backdating window for leave applications | `7` |
-| `SEED_PASSWORD` | Password assigned to seeded demo accounts | `Passw0rd!23` |
+| `SEED_PASSWORD` | Password assigned to seeded demo accounts (development/demo only) | `Passw0rd!23` |
 
 ---
 
@@ -109,7 +111,8 @@ cd client && npm install && cd ..
 # Setup environment variables
 cp server/.env.example server/.env
 
-# Seed initial departments, users, leaves, holidays, and announcements
+# (Optional) seed demo departments, users, leave types and holidays into a running MongoDB.
+# In development the server auto-starts an embedded MongoDB and auto-seeds if none is running.
 npm run seed
 
 # Run both backend and frontend concurrently
@@ -126,7 +129,11 @@ npm run dev
 Run the full production stack (Node.js 24 Alpine runner + MongoDB 8 + persistent storage) with Docker Compose:
 
 ```bash
-# Build and run containers in background
+# 1. Create your secrets file (never commit it)
+cp .env.docker.example .env
+#    then edit .env: set MONGO_PASSWORD and generate JWT secrets with `openssl rand -hex 48`
+
+# 2. Build and run containers in background
 docker compose up -d --build
 
 # Inspect running services
@@ -136,14 +143,28 @@ docker compose ps
 # Frontend & API are served simultaneously on http://localhost:5000
 ```
 
+MongoDB is **not** published to the host; it is only reachable by the app container and requires authentication.
+The production container starts with an empty database and refuses to load demo accounts. Create the first HR admin
+with a one-off script/`mongosh` insert, or — for a throw-away demo only — set `ALLOW_DEMO_SEED=true` and run
+`docker compose exec app node server/src/seed/seed.js`.
+
 ---
 
-## 🔑 Demo Test Accounts
+## 🔑 Demo Test Accounts (development / demo only)
 
-All demo accounts are created by the idempotent seed script with password: **`Passw0rd!23`**
+The seed script creates 19 accounts that all share the password in `SEED_PASSWORD` (default **`Passw0rd!23`**).
+The login screen's one-click demo buttons appear **only in development builds** (`npm run dev`), never in production.
 
-| Role | Email | Name | Designation | Department |
-|---|---|---|---|---|
+| Role | Email | Name | Department |
+|---|---|---|---|
+| **HR Admin** | `hr@staffsync.test` | Alice HR | Human Resources |
+| **HR Admin** | `hr2@staffsync.test` | Bob HR | Human Resources |
+| **Manager** | `manager@staffsync.test` | Carol Manager | Engineering |
+| **Employee** | `employee1@staffsync.test` | Dave Employee | Engineering |
+| **Employee** | `employee2@staffsync.test` | Eve Employee | Engineering |
+| **Employee** | `employee3@staffsync.test` | Frank Employee | Sales (no manager → HR approves) |
+
+---|---|---|---|---|
 | **HR Admin** | `hr@staffsync.test` | Sarah Jenkins | Chief HR Officer | Human Resources |
 | **HR Specialist** | `hr2@staffsync.test` | David Miller | HR Operations Lead | Human Resources |
 | **Manager** | `manager@staffsync.test` | Marcus Chen | Engineering Manager | Engineering |
@@ -165,12 +186,17 @@ npm test
 cd server && npx vitest run --coverage
 ```
 
-### Test Suite Results (86 / 86 Tests Passing - 100% Green):
-- ✅ `tests/auth.test.js` (15 tests): Authentication, JWT token rotation, password change, lockout, rate limiting.
-- ✅ `tests/employees.test.js` (19 tests): Department CRUD, employee directory, manager scoping, self-profile editor, deactivation guards.
-- ✅ `tests/leaves.test.js` (22 tests): Leave policies, working-day calculations, double-approval concurrency guards, quota balances, calendar.
-- ✅ `tests/attendance.test.js` (15 tests): Check-in/out state machine, late calculation, timezone rollover, CSV formula-injection escaping, announcements audience & XSS sanitization.
-- ✅ `tests/training.test.js` (15 tests): Training lifecycle, capacity limits, manager direct-report scoping, employee progress & feedback, dashboard aggregation payloads, NoSQL injection resistance.
+### Test suites (121 server tests + 3 client tests)
+- `auth.test.js` (15): login, JWT refresh rotation, password change, rate limiting.
+- `employees.test.js` (19): departments, employees, manager scoping, self-profile, deactivation guards.
+- `leaves.test.js` (22): policies, working-day calculation, double-approval guard, balances, calendar.
+- `attendance.test.js` (15): check-in/out state machine, late calculation, timezone rollover, CSV formula escaping, announcements.
+- `training.test.js` (15): lifecycle, capacity, direct-report scoping, progress, dashboard payloads.
+- `acceptance.e2e.test.js` (6): full-system scenario.
+- `regression.audit.test.js` (29): locks in every bug fixed during the security/quality audit (see `docs/AUDIT_REPORT.md`).
+- `client/src/__tests__` (3): forced-password-change page renders, form labels wired to inputs.
+
+Tests need no `.env` file (the test environment supplies throw-away secrets); CI runs them on every push (`.github/workflows/ci.yml`).
 
 ---
 
@@ -195,20 +221,24 @@ The API is fully documented and exportable via [`docs/StaffSync.postman_collecti
 | | `PATCH` | `/api/employees/me` | Authenticated (self) |
 | | `PATCH` | `/api/employees/:id/status` | HR Only |
 | | `POST` | `/api/employees/:id/reset-password` | HR Only |
-| **Leaves** | `GET` / `POST` | `/api/leaves/types` | HR Only |
-| | `GET` / `POST` / `DELETE` | `/api/leaves/holidays` | Authenticated (GET) / HR |
-| | `GET` | `/api/leaves/preview` | Authenticated |
-| | `GET` / `POST` | `/api/leaves/requests` | Authenticated |
-| | `PATCH` | `/api/leaves/requests/:id/decide` | Manager / HR |
-| | `PATCH` | `/api/leaves/requests/:id/cancel` | Authenticated (owner) |
-| | `GET` | `/api/leaves/calendar` | Authenticated |
-| | `GET` / `PATCH` | `/api/leaves/balances` | Authenticated / HR |
+| **Leave types** | `GET` | `/api/leave-types` | Authenticated |
+| | `POST` / `PUT` / `DELETE` | `/api/leave-types[/:id]` | HR Only |
+| **Holidays** | `GET` | `/api/holidays` | Authenticated |
+| | `POST` / `PUT` / `DELETE` | `/api/holidays[/:id]` | HR Only |
+| **Leaves** | `GET` | `/api/leaves/preview` | Authenticated |
+| | `POST` | `/api/leaves` | Authenticated (apply) |
+| | `GET` | `/api/leaves/my` · `/api/leaves/calendar` · `/api/leaves/:id` | Authenticated (scoped) |
+| | `GET` | `/api/leaves` · `/api/leaves/pending-approvals` | Manager / HR |
+| | `PATCH` | `/api/leaves/:id/decision` | Manager / HR |
+| | `PATCH` | `/api/leaves/:id/cancel` | Owner |
+| | `GET` / `PATCH` | `/api/leaves/balances[/:userId or :id]` | Authenticated / HR (adjust) |
 | **Attendance** | `POST` | `/api/attendance/check-in` | Authenticated |
 | | `POST` | `/api/attendance/check-out` | Authenticated |
 | | `GET` | `/api/attendance/today` | Authenticated |
 | | `GET` | `/api/attendance/my` | Authenticated |
 | | `GET` | `/api/attendance/team` | Manager Only |
-| | `GET` | `/api/attendance/manage` | HR Only |
+| | `GET` | `/api/attendance` · `/api/attendance/summary` | HR Only |
+| | `PUT` | `/api/attendance/:id` | HR Only (correction) |
 | | `GET` | `/api/attendance/export.csv` | HR Only |
 | | `POST` | `/api/attendance/correct` | HR Only |
 | **Announcements**| `GET` | `/api/announcements` | Authenticated (filtered) |
@@ -232,7 +262,7 @@ The API is fully documented and exportable via [`docs/StaffSync.postman_collecti
 StaffSync is architected to deploy easily to container platforms such as **Render**, **Railway**, or **Fly.io** paired with a **MongoDB Atlas** cluster.
 
 1. **Build Step**: Express serves the compiled React client (`client/dist`) via static middleware and Express 5 splat routing `app.get('/{*splat}', ...)` returning `index.html`.
-2. **Reverse Proxy Trust**: The backend enables `trust proxy` in production, ensuring correct IP resolution for rate limiters behind Cloudflare/Render load balancers.
+2. **Reverse Proxy Trust**: set `TRUST_PROXY=1` when running behind one proxy (Render, Fly, nginx, Cloudflare) so rate limiting sees real client IPs. Leave `0` when directly exposed.
 3. **Environment Setup**:
    - `NODE_ENV=production`
    - `PORT=5000`
@@ -240,17 +270,24 @@ StaffSync is architected to deploy easily to container platforms such as **Rende
    - `JWT_ACCESS_SECRET=<generated 64-character random string>`
    - `JWT_REFRESH_SECRET=<generated 64-character random string>`
    - `CLIENT_ORIGIN=https://staffsync.yourdomain.com`
-4. **Seed Initial Admin**:
-   - Run `node server/src/seed/seed.js` once with a custom `SEED_PASSWORD`.
-   - Log in immediately at `/login` and change the HR password via `/profile`.
+   - `TRUST_PROXY=1`
+4. **First admin**: the seeder refuses to run in production (it creates 19 accounts sharing one password).
+   Insert a single HR user yourself (hash the password with bcrypt cost 12, set `mustChangePassword: true`), then create everyone else from the UI.
 
 ---
 
 ## 🛡️ Security & Hardening Highlights
-- **Token Security**: Access tokens reside exclusively in JavaScript memory; refresh tokens are stored in `httpOnly`, `SameSite=Lax`, `Secure` (production) cookies.
-- **Atomic Operations**: Double-approval and capacity race conditions are prevented with conditional atomic updates (`findOneAndUpdate`).
-- **Injection Protection**: Strict Zod schemas reject extra keys (`.strict()`), query search inputs escape regex meta-characters, and CSV exports escape formula injection symbols (`=`, `+`, `-`, `@`).
-- **Content Security**: Helmet headers and strict plain-text rendering neutralize Cross-Site Scripting (XSS).
+- **Sessions**: access tokens live only in JS memory (15 min); refresh tokens are `httpOnly`, `SameSite=Lax`, `Secure` (production) cookies. Changing/resetting a password or deactivating an account bumps `tokenVersion`, which **immediately revokes both access and refresh tokens**.
+- **Forced password change** is enforced by the API (HTTP 403 until the temporary password is replaced), not only by the UI.
+- **Concurrency**: leave approval/cancellation use conditional atomic updates; applying for leave reserves balance atomically under a short per-user lock, with rollback on failure.
+- **Input validation**: Zod schemas validate every body; controllers use the validated payload (never raw `req.body`); dates must be real calendar dates; ranges and years are bounded; search/sort parameters are whitelisted/escaped.
+- **Privacy**: the team calendar never exposes colleagues' leave reasons, decision notes or leave category.
+- **Rate limiting**: 300 requests / 15 min / IP globally; 10 *failed* logins / 15 min / IP (successful logins don't count).
+- **Transport/headers**: Helmet with a strict CSP. Note: CSP includes `upgrade-insecure-requests`; serve production over HTTPS (or access via `localhost`).
+- **Output**: React escapes all rendered text; there are no `dangerouslySetInnerHTML` sinks. CSV exports neutralise spreadsheet formula injection.
+- **Containers**: non-root user, no secrets in the image or repo, MongoDB not exposed and authenticated.
+
+Known limitations are tracked in `docs/AUDIT_REPORT.md`.
 
 ---
 
